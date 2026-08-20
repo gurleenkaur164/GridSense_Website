@@ -252,6 +252,21 @@
   </style>
 </head>
 <body>
+<script>
+  if (!localStorage.getItem('token')) {
+    window.location.href = '/login.html';
+  }
+  document.addEventListener('DOMContentLoaded', function() {
+    var name = localStorage.getItem('userName');
+    var el = document.getElementById('userGreeting');
+    if (el && name) el.textContent = 'Hi, ' + name;
+  });
+  function logout() {
+    localStorage.removeItem('token');
+    localStorage.removeItem('userName');
+    window.location.href = '/login.html';
+  }
+</script>
 
 <nav>
   <div class="logo"><span class="logo-dot"></span> SignalScope</div>
@@ -262,6 +277,10 @@
       <span>Points: <strong id="dataPointCount">0</strong></span>
     </div>
     <div class="theme-toggle" onclick="toggleTheme()" title="Toggle dark/light mode"></div>
+    <div style="display:flex;align-items:center;gap:0.8rem;">
+      <span id="userGreeting" style="font-size:0.82rem;color:var(--text2);font-weight:500;"></span>
+      <button onclick="logout()" style="padding:5px 14px;border-radius:10px;border:1.5px solid var(--border);background:var(--pink-ghost);color:var(--pink);font-size:0.78rem;font-weight:600;cursor:pointer;font-family:var(--font);transition:all 0.3s;" onmouseover="this.style.background='var(--pink)';this.style.color='white'" onmouseout="this.style.background='var(--pink-ghost)';this.style.color='var(--pink)'">Logout</button>
+    </div>
   </div>
 </nav>
 
