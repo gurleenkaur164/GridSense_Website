@@ -206,6 +206,30 @@
     .data-note{background:var(--pink-ghost);border:1.5px dashed var(--pink-soft);border-radius:12px;padding:0.9rem 1.2rem;margin:0 2.5rem;max-width:1390px;font-size:0.8rem;color:var(--text2);line-height:1.6;}
     .data-note strong{color:var(--pink);}
 
+    /* ─── SUMMARY PANEL ─── */
+    .summary-panel {
+      background:var(--card);border:1.5px solid var(--border);border-radius:var(--radius);
+      padding:1.4rem 1.6rem;box-shadow:var(--shadow);transition:all 0.4s;
+      margin:0 2.5rem;max-width:1390px;
+    }
+    .summary-panel:hover{box-shadow:var(--shadow-hover);border-color:var(--pink-soft);}
+    .summary-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;}
+    .summary-grid{display:grid;grid-template-columns:1fr 1fr;gap:1rem;}
+    .summary-block{background:var(--pink-ghost);border-radius:14px;padding:1rem 1.2rem;}
+    .summary-block-title{font-size:0.75rem;font-weight:700;color:var(--pink);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:0.5rem;display:flex;align-items:center;gap:6px;}
+    .summary-block p{font-size:0.82rem;color:var(--text);line-height:1.65;margin:0;}
+    .summary-block ul{font-size:0.82rem;color:var(--text);line-height:1.7;margin:0.3rem 0 0;padding-left:1.2rem;}
+    .summary-block li{margin-bottom:2px;}
+    .summary-block .highlight{color:var(--pink);font-weight:600;}
+    .summary-block .good{color:var(--green);font-weight:600;}
+    .summary-block .warn{color:#e09100;font-weight:600;}
+    .summary-block .bad{color:var(--red);font-weight:600;}
+    .summary-timestamp{font-size:0.72rem;color:var(--text3);font-style:italic;}
+    @media(max-width:900px){
+      .summary-grid{grid-template-columns:1fr;}
+      .summary-panel{margin:0 1rem;}
+    }
+
     /* ─── PLACE MODE BANNER ─── */
     .place-banner {
       position:fixed;bottom:24px;left:50%;transform:translateX(-50%);
@@ -313,6 +337,19 @@
     <div id="zoneTable" style="overflow-y:auto;max-height:280px;"></div>
   </div>
 
+</div>
+
+<div class="summary-panel" id="summaryPanel">
+  <div class="summary-header">
+    <div class="card-title">Summary & Insights</div>
+    <div style="display:flex;align-items:center;gap:0.8rem;">
+      <span class="summary-timestamp" id="summaryTimestamp">Updated just now</span>
+      <button class="btn" onclick="updateSummary()">Refresh</button>
+    </div>
+  </div>
+  <div class="summary-grid" id="summaryContent">
+    <div class="summary-block"><p>Loading analysis...</p></div>
+  </div>
 </div>
 
 <div class="place-banner" id="placeBanner">
@@ -852,7 +889,135 @@ function animate(){
   requestAnimationFrame(animate);
 }
 
+// ======================================================
+//  SUMMARY & INSIGHTS — reads from signalGrid, uncertaintyGrid, aps
+//  Works with any data source: swap the grids and call updateSummary()
+// ======================================================
+let lastSummaryTime = Date.now();
+
+function updateSummary() {
+  lastSummaryTime = Date.now();
+  let totalCells = 0, coveredCells = 0;
+  let sum = 0, count = 0, min = 0, max = -100;
+  let strongCount = 0, goodCount = 0, fairCount = 0, weakCount = 0;
+  let highUncCount = 0, totalUnc = 0, uncCount = 0;
+  const weakClusters = [];
+
+  for (let y = 0; y < GRID_H; y++) for (let x = 0; x < GRID_W; x++) {
+    if (isWall(x, y)) continue;
+    totalCells++;
+    const sig = signalGrid[y]?.[x];
+    const unc = uncertaintyGrid[y]?.[x];
+    if (sig === null || sig === undefined) continue;
+    coveredCells++;
+    sum += sig; count++;
+    if (sig > max) max = sig;
+    if (sig < min) min = sig;
+    if (sig >= -50) strongCount++;
+    else if (sig >= -65) goodCount++;
+    else if (sig >= -80) fairCount++;
+    else weakCount++;
+    if (unc !== null && unc !== undefined) {
+      totalUnc += unc; uncCount++;
+      if (unc > 0.7) highUncCount++;
+    }
+  }
+
+  const avg = count ? (sum / count) : -80;
+  const coveragePct = totalCells ? ((coveredCells / totalCells) * 100) : 0;
+  const avgUnc = uncCount ? (totalUnc / uncCount) : 0;
+  const weakPct = count ? ((weakCount / count) * 100) : 0;
+  const strongPct = count ? ((strongCount / count) * 100) : 0;
+  const highUncPct = uncCount ? ((highUncCount / uncCount) * 100) : 0;
+
+  // Signal quality label
+  let qualityLabel, qualityClass;
+  if (avg >= -50) { qualityLabel = 'Excellent'; qualityClass = 'good'; }
+  else if (avg >= -65) { qualityLabel = 'Good'; qualityClass = 'good'; }
+  else if (avg >= -80) { qualityLabel = 'Fair'; qualityClass = 'warn'; }
+  else { qualityLabel = 'Poor'; qualityClass = 'bad'; }
+
+  // Recommendations
+  const recs = [];
+  if (weakPct > 30) recs.push('High percentage of weak signal areas (' + weakPct.toFixed(0) + '%). Consider adding more access points in underserved zones.');
+  if (weakPct > 10 && weakPct <= 30) recs.push('Some weak zones detected (' + weakPct.toFixed(0) + '%). Review router placement for better coverage.');
+  if (highUncPct > 25) recs.push('Uncertainty is high in ' + highUncPct.toFixed(0) + '% of cells. More data collection passes are needed in those areas.');
+  if (aps.length < 3) recs.push('Only ' + aps.length + ' access point(s) configured. Most floor plans this size need 3-5 for full coverage.');
+  if (aps.length >= 3 && strongPct > 60) recs.push('Strong signal in ' + strongPct.toFixed(0) + '% of the area. Current router placement is effective.');
+  if (avg >= -50 && weakPct < 10) recs.push('Overall signal quality is excellent with minimal dead zones. No immediate action needed.');
+  if (recs.length === 0) recs.push('Coverage looks reasonable. Continue monitoring for changes.');
+
+  // Find best and worst APs
+  let bestAP = aps[0], worstAP = aps[0];
+  for (const ap of aps) {
+    if (ap.strength > bestAP.strength) bestAP = ap;
+    if (ap.strength < worstAP.strength) worstAP = ap;
+  }
+
+  const el = document.getElementById('summaryContent');
+  el.innerHTML = `
+    <div class="summary-block">
+      <div class="summary-block-title">Overall Signal Quality</div>
+      <p>
+        Average signal strength is <span class="${qualityClass}">${avg.toFixed(1)} dBm (${qualityLabel})</span>.
+        Signal ranges from <span class="highlight">${max.toFixed(0)} dBm</span> (strongest)
+        to <span class="highlight">${min.toFixed(0)} dBm</span> (weakest) across the mapped area.
+      </p>
+      <ul>
+        <li><span class="good">${strongCount}</span> cells with strong signal (≥ -50 dBm)</li>
+        <li><span class="highlight">${goodCount}</span> cells with good signal (-50 to -65 dBm)</li>
+        <li><span class="warn">${fairCount}</span> cells with fair signal (-65 to -80 dBm)</li>
+        <li><span class="bad">${weakCount}</span> cells with weak signal (< -80 dBm)</li>
+      </ul>
+    </div>
+
+    <div class="summary-block">
+      <div class="summary-block-title">Coverage & Uncertainty</div>
+      <p>
+        <span class="highlight">${coveragePct.toFixed(0)}%</span> of the floor area has been scanned
+        (${coveredCells} of ${totalCells} cells).
+        Average prediction uncertainty is <span class="${avgUnc > 0.5 ? 'warn' : 'good'}">${(avgUnc * 100).toFixed(0)}%</span>.
+        ${highUncPct > 0 ? '<span class="' + (highUncPct > 25 ? 'bad' : 'warn') + '">' + highUncPct.toFixed(0) + '%</span> of cells have high uncertainty (>70%), suggesting the robot should revisit those areas.' : '<span class="good">No areas</span> with critically high uncertainty.'}
+      </p>
+    </div>
+
+    <div class="summary-block">
+      <div class="summary-block-title">Access Point Analysis</div>
+      <p>
+        <span class="highlight">${aps.length}</span> access point${aps.length !== 1 ? 's' : ''} configured.
+        ${aps.length > 0 ? 'Strongest AP is <span class="good">' + bestAP.name + '</span> at ' + bestAP.strength + ' dBm (' + bestAP.band + ').' : ''}
+        ${aps.length > 1 ? ' Weakest is <span class="warn">' + worstAP.name + '</span> at ' + worstAP.strength + ' dBm.' : ''}
+      </p>
+      <ul>
+        ${aps.map(ap => '<li><span class="highlight">' + ap.name + '</span> — ' + ap.strength + ' dBm, ' + ap.band + ', at (' + ap.x.toFixed(0) + ', ' + ap.y.toFixed(0) + ')</li>').join('')}
+      </ul>
+    </div>
+
+    <div class="summary-block">
+      <div class="summary-block-title">Recommendations</div>
+      <ul>
+        ${recs.map(r => '<li>' + r + '</li>').join('')}
+      </ul>
+    </div>
+  `;
+
+  document.getElementById('summaryTimestamp').textContent = 'Updated ' + new Date().toLocaleTimeString();
+  document.getElementById('weakZones').textContent = weakCount > 0 ? Math.ceil(weakCount / 20) : 0;
+}
+
+// Auto-refresh summary every 10 seconds
+setInterval(updateSummary, 10000);
+
+// Also update summary when routers change
+const _origUpdateAP = updateAP;
+updateAP = function(i, field, val) { _origUpdateAP(i, field, val); updateSummary(); };
+const _origRemoveAP = removeAP;
+removeAP = function(i) { _origRemoveAP(i); updateSummary(); };
+const _origAddManual = addRouterManual;
+addRouterManual = function() { _origAddManual(); updateSummary(); };
+
 renderRouterPanel();
+updateSummary();
 animate();
 </script>
 </body>
