@@ -1,0 +1,974 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SignalScope — WiFi Signal Mapper</title>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --pink: #e84393;
+      --pink-light: #fd79a8;
+      --pink-soft: #fab1c4;
+      --pink-pale: #ffe0ec;
+      --pink-ghost: #fff0f5;
+      --white: #ffffff;
+      --bg: #fef6f9;
+      --bg2: #ffffff;
+      --card: #ffffff;
+      --border: #f0d4e0;
+      --text: #2d2235;
+      --text2: #7a6b82;
+      --text3: #b8a5c2;
+      --green: #00b894;
+      --red: #e17055;
+      --yellow: #fdcb6e;
+      --orange: #e17055;
+      --shadow: 0 2px 16px rgba(232,67,147,0.07);
+      --shadow-hover: 0 4px 24px rgba(232,67,147,0.13);
+      --radius: 18px;
+      --font: 'DM Sans', system-ui, sans-serif;
+      --mono: 'Space Mono', monospace;
+    }
+
+    [data-theme="dark"] {
+      --bg: #1a1020;
+      --bg2: #231530;
+      --card: #2a1a38;
+      --border: #3d2650;
+      --text: #f0e6f6;
+      --text2: #b8a5c2;
+      --text3: #6b5a78;
+      --pink-ghost: #2a1a38;
+      --pink-pale: #3d2650;
+      --white: #f0e6f6;
+      --shadow: 0 2px 16px rgba(0,0,0,0.3);
+      --shadow-hover: 0 4px 24px rgba(232,67,147,0.2);
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: var(--font);
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      transition: background 0.4s, color 0.4s;
+    }
+
+    /* ─── NAV ─── */
+    nav {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 1rem 2.5rem;
+      background: var(--bg2);
+      border-bottom: 2px solid var(--border);
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      transition: background 0.4s, border-color 0.4s;
+    }
+    .logo {
+      display: flex;
+      align-items: center;
+      gap: 0.7rem;
+      font-size: 1.35rem;
+      font-weight: 700;
+      color: var(--pink);
+      letter-spacing: -0.03em;
+    }
+    .logo-dot {
+      width: 10px; height: 10px;
+      background: var(--pink);
+      border-radius: 50%;
+      display: inline-block;
+    }
+    .nav-right {
+      display: flex;
+      align-items: center;
+      gap: 1.8rem;
+    }
+    .nav-info {
+      font-size: 0.82rem;
+      color: var(--text2);
+      display: flex;
+      align-items: center;
+      gap: 1.4rem;
+    }
+    .live-dot {
+      width: 7px; height: 7px;
+      border-radius: 50%;
+      background: var(--green);
+      display: inline-block;
+      margin-right: 5px;
+      animation: blink 2s infinite;
+    }
+    @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.3} }
+
+    /* ─── THEME TOGGLE ─── */
+    .theme-toggle {
+      width: 52px; height: 28px;
+      background: var(--pink-pale);
+      border-radius: 14px;
+      border: 2px solid var(--border);
+      cursor: pointer;
+      position: relative;
+      transition: background 0.3s, border-color 0.3s;
+      flex-shrink: 0;
+    }
+    .theme-toggle::after {
+      content: '☀️';
+      font-size: 0.75rem;
+      position: absolute;
+      top: 2px; left: 3px;
+      width: 20px; height: 20px;
+      background: var(--white);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: transform 0.3s, background 0.3s;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.1);
+    }
+    [data-theme="dark"] .theme-toggle {
+      background: #3d2650;
+    }
+    [data-theme="dark"] .theme-toggle::after {
+      content: '🌙';
+      transform: translateX(22px);
+      background: #4a2d60;
+    }
+
+    /* ─── STATS ─── */
+    .stats-bar {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 1rem;
+      padding: 1.5rem 2.5rem 0;
+      max-width: 1440px;
+      margin: 0 auto;
+    }
+    .stat-card {
+      background: var(--card);
+      border: 1.5px solid var(--border);
+      border-radius: var(--radius);
+      padding: 1.1rem 1.3rem;
+      text-align: center;
+      box-shadow: var(--shadow);
+      transition: all 0.4s;
+    }
+    .stat-value {
+      font-family: var(--mono);
+      font-size: 1.7rem;
+      font-weight: 700;
+      color: var(--pink);
+    }
+    .stat-label {
+      font-size: 0.75rem;
+      color: var(--text2);
+      margin-top: 3px;
+      font-weight: 500;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+
+    /* ─── GRID ─── */
+    .dashboard {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1.2rem;
+      padding: 1.3rem 2.5rem 2rem;
+      max-width: 1440px;
+      margin: 0 auto;
+    }
+
+    .card {
+      background: var(--card);
+      border: 1.5px solid var(--border);
+      border-radius: var(--radius);
+      padding: 1.3rem 1.5rem;
+      box-shadow: var(--shadow);
+      transition: all 0.4s;
+      position: relative;
+    }
+    .card:hover {
+      box-shadow: var(--shadow-hover);
+      border-color: var(--pink-soft);
+    }
+    .card-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 1rem;
+    }
+    .card-title {
+      font-size: 0.95rem;
+      font-weight: 600;
+      color: var(--text);
+    }
+    .card-badge {
+      font-size: 0.68rem;
+      padding: 3px 10px;
+      border-radius: 20px;
+      background: var(--pink-ghost);
+      color: var(--pink);
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+
+    canvas {
+      border-radius: 12px;
+      display: block;
+      width: 100%;
+    }
+
+    /* ─── BUTTONS ─── */
+    .controls { display: flex; gap: 0.5rem; }
+    .btn {
+      padding: 5px 14px;
+      border-radius: 10px;
+      border: 1.5px solid var(--border);
+      background: var(--bg);
+      color: var(--text2);
+      cursor: pointer;
+      font-size: 0.78rem;
+      font-weight: 600;
+      font-family: var(--font);
+      transition: all 0.25s;
+    }
+    .btn:hover { border-color: var(--pink-soft); color: var(--pink); }
+    .btn.active {
+      background: var(--pink);
+      color: #fff;
+      border-color: var(--pink);
+    }
+
+    /* ─── LEGEND ─── */
+    .legend {
+      display: flex;
+      gap: 1rem;
+      margin-top: 0.7rem;
+      font-size: 0.72rem;
+      color: var(--text2);
+      flex-wrap: wrap;
+      font-weight: 500;
+    }
+    .legend-item { display: flex; align-items: center; gap: 5px; }
+    .legend-color { width: 12px; height: 12px; border-radius: 4px; }
+
+    /* ─── TOOLTIP ─── */
+    .tooltip {
+      position: absolute;
+      background: var(--card);
+      border: 1.5px solid var(--pink-soft);
+      border-radius: 12px;
+      padding: 8px 14px;
+      font-size: 0.78rem;
+      pointer-events: none;
+      opacity: 0;
+      transition: opacity 0.2s;
+      z-index: 50;
+      white-space: nowrap;
+      box-shadow: var(--shadow);
+    }
+    .tooltip.visible { opacity: 1; }
+
+    /* ─── TABLE ─── */
+    .zone-table { width: 100%; border-collapse: collapse; font-size: 0.82rem; }
+    .zone-table thead th {
+      text-align: left;
+      padding: 8px 10px;
+      color: var(--text3);
+      font-weight: 600;
+      font-size: 0.72rem;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      border-bottom: 1.5px solid var(--border);
+    }
+    .zone-table thead th:nth-child(n+2) { text-align: center; }
+    .zone-table thead th:last-child { text-align: right; }
+    .zone-table tbody tr {
+      border-bottom: 1px solid var(--border);
+      transition: background 0.2s;
+    }
+    .zone-table tbody tr:hover { background: var(--pink-ghost); }
+    .zone-table td { padding: 10px; }
+    .zone-table td:nth-child(n+2) { text-align: center; }
+    .zone-table td:last-child { text-align: right; }
+
+    .status-pill {
+      display: inline-block;
+      padding: 2px 10px;
+      border-radius: 12px;
+      font-size: 0.7rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.03em;
+    }
+    .status-strong { background: rgba(0,184,148,0.12); color: #00b894; }
+    .status-good { background: rgba(232,67,147,0.1); color: var(--pink); }
+    .status-fair { background: rgba(253,203,110,0.2); color: #e09100; }
+    .status-weak { background: rgba(225,112,85,0.12); color: #e17055; }
+
+    .signal-bar-bg {
+      display: inline-block;
+      width: 56px; height: 5px;
+      background: var(--pink-pale);
+      border-radius: 3px;
+      overflow: hidden;
+      vertical-align: middle;
+    }
+    .signal-bar-fill { height: 100%; border-radius: 3px; }
+
+    /* ─── FOOTER ─── */
+    footer {
+      text-align: center;
+      padding: 2.5rem 2rem;
+      font-size: 0.78rem;
+      color: var(--text3);
+      border-top: 1.5px solid var(--border);
+    }
+    .team-section {
+      margin-bottom: 1.2rem;
+    }
+    .team-title {
+      font-size: 0.82rem;
+      font-weight: 700;
+      color: var(--pink);
+      margin-bottom: 0.6rem;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+    }
+    .team-leader {
+      font-size: 0.85rem;
+      font-weight: 600;
+      color: var(--text);
+      margin-bottom: 0.5rem;
+    }
+    .team-members {
+      display: flex;
+      justify-content: center;
+      gap: 1.5rem;
+      flex-wrap: wrap;
+      font-size: 0.82rem;
+      color: var(--text2);
+    }
+    .team-members span {
+      padding: 4px 14px;
+      background: var(--pink-ghost);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      font-weight: 500;
+    }
+
+    /* ─── DATA NOTE ─── */
+    .data-note {
+      background: var(--pink-ghost);
+      border: 1.5px dashed var(--pink-soft);
+      border-radius: 12px;
+      padding: 1rem 1.3rem;
+      margin: 0 2.5rem 0;
+      max-width: 1390px;
+      font-size: 0.82rem;
+      color: var(--text2);
+      line-height: 1.6;
+    }
+    .data-note strong { color: var(--pink); }
+
+    @media (max-width: 900px) {
+      .dashboard, .stats-bar { grid-template-columns: 1fr; padding-left: 1rem; padding-right: 1rem; }
+      nav { padding: 1rem; }
+      .nav-info { display: none; }
+      .data-note { margin: 0 1rem; }
+    }
+  </style>
+</head>
+<body>
+
+<nav>
+  <div class="logo">
+    <span class="logo-dot"></span>
+    SignalScope
+  </div>
+  <div class="nav-right">
+    <div class="nav-info">
+      <span><span class="live-dot"></span>Robot Online</span>
+      <span>Last scan: <strong id="lastScan">just now</strong></span>
+      <span>Points: <strong id="dataPointCount">0</strong></span>
+    </div>
+    <div class="theme-toggle" onclick="toggleTheme()" title="Toggle dark/light mode"></div>
+  </div>
+</nav>
+
+<div class="stats-bar">
+  <div class="stat-card">
+    <div class="stat-value" id="avgSignal">-52</div>
+    <div class="stat-label">Avg Signal (dBm)</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-value" id="coverage">78%</div>
+    <div class="stat-label">Area Covered</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-value" id="weakZones">3</div>
+    <div class="stat-label">Weak Zones</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-value" id="robotSpeed">0.4</div>
+    <div class="stat-label">Robot Speed (m/s)</div>
+  </div>
+</div>
+
+<div class="dashboard">
+
+  <!-- HEATMAP -->
+  <div class="card">
+    <div class="card-header">
+      <div class="card-title">Signal Strength Heatmap</div>
+      <div class="controls">
+        <button class="btn active" id="btnSignal" onclick="setHeatmapMode('signal', this)">Signal</button>
+        <button class="btn" id="btnUncertainty" onclick="setHeatmapMode('uncertainty', this)">Uncertainty</button>
+      </div>
+    </div>
+    <canvas id="heatmapCanvas" width="600" height="400"></canvas>
+    <div class="legend" id="heatmapLegend"></div>
+    <div class="tooltip" id="heatmapTooltip"></div>
+  </div>
+
+  <!-- ROBOT MAP -->
+  <div class="card">
+    <div class="card-header">
+      <div class="card-title">Robot Path & Floor Plan</div>
+      <div class="controls">
+        <button class="btn active" id="btnPlay" onclick="toggleRobot()">Pause</button>
+        <button class="btn" onclick="resetRobot()">Reset</button>
+      </div>
+    </div>
+    <canvas id="robotCanvas" width="600" height="400"></canvas>
+    <div class="legend">
+      <div class="legend-item"><div class="legend-color" style="background:var(--pink)"></div> Robot</div>
+      <div class="legend-item"><div class="legend-color" style="background:var(--pink-soft)"></div> Trail</div>
+      <div class="legend-item"><div class="legend-color" style="background:var(--green)"></div> Access Points</div>
+      <div class="legend-item"><div class="legend-color" style="background:var(--text3)"></div> Walls</div>
+    </div>
+  </div>
+
+  <!-- SIGNAL CHART -->
+  <div class="card">
+    <div class="card-header">
+      <div class="card-title">Signal Strength Over Time</div>
+      <div class="card-badge">Live</div>
+    </div>
+    <canvas id="signalChart" width="600" height="280"></canvas>
+    <div class="tooltip" id="chartTooltip"></div>
+  </div>
+
+  <!-- ZONE TABLE -->
+  <div class="card">
+    <div class="card-header">
+      <div class="card-title">Zone Analysis</div>
+      <div class="card-badge" id="zoneBadge">6 zones</div>
+    </div>
+    <div id="zoneTable" style="overflow-y:auto; max-height:280px;"></div>
+  </div>
+
+</div>
+
+<div class="data-note">
+  <strong>Note:</strong> This dashboard currently runs on <strong>simulated data</strong>.
+  The heatmap, robot path, and signal readings are all generated client-side for demonstration purposes.
+  Once your ML model is ready, replace the data functions (marked with <code>/* REPLACE_WITH_REAL_DATA */</code> in the source) with API calls to your backend.
+</div>
+
+<footer>
+  <div class="team-section">
+    <div class="team-title">Team</div>
+    <div class="team-leader">Team Leader: Gautam Narang</div>
+    <div class="team-members">
+      <span>Gurleen Kaur</span>
+      <span>Samreet Kaur</span>
+      <span>Ojas Gambhir</span>
+      <span>Arushi Bhateja</span>
+    </div>
+  </div>
+  SignalScope — Capstone Project 2026 &nbsp;·&nbsp; WiFi Signal Mapping Robot
+</footer>
+
+<script>
+// ======================================================
+//  THEME TOGGLE
+// ======================================================
+function toggleTheme() {
+  const html = document.documentElement;
+  const next = html.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+  html.setAttribute('data-theme', next);
+  localStorage.setItem('signalscope-theme', next);
+}
+(function() {
+  const saved = localStorage.getItem('signalscope-theme');
+  if (saved) document.documentElement.setAttribute('data-theme', saved);
+})();
+
+function getCSS(name) {
+  return getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+}
+
+// ======================================================
+//  FLOOR PLAN — walls, access points, waypoints
+// ======================================================
+const GRID_W = 60, GRID_H = 40;
+
+const walls = [
+  {x:0,y:0,w:60,h:1},{x:0,y:39,w:60,h:1},
+  {x:0,y:0,w:1,h:40},{x:59,y:0,w:1,h:40},
+  {x:15,y:0,w:1,h:15},{x:15,y:20,w:1,h:20},
+  {x:30,y:0,w:1,h:18},{x:30,y:23,w:1,h:17},
+  {x:45,y:0,w:1,h:12},{x:45,y:17,w:1,h:23},
+  {x:0,y:20,w:10,h:1},{x:20,y:12,w:10,h:1},
+  {x:35,y:28,w:10,h:1},
+];
+
+const aps = [
+  {x:8, y:10, strength:-30, name:'AP-1 (Main Lobby)'},
+  {x:22, y:30, strength:-35, name:'AP-2 (East Wing)'},
+  {x:50, y:8,  strength:-28, name:'AP-3 (Server Room)'},
+  {x:38, y:35, strength:-40, name:'AP-4 (Lab)'},
+];
+
+function isWall(gx, gy) {
+  for (const w of walls) {
+    if (gx >= w.x && gx < w.x + w.w && gy >= w.y && gy < w.y + w.h) return true;
+  }
+  return false;
+}
+
+// ======================================================
+//  DUMMY DATA GENERATION
+//  /* REPLACE_WITH_REAL_DATA */
+//  Replace this function with an API call to your ML model:
+//    fetch('/api/heatmap').then(r => r.json()).then(data => { ... })
+//  The API should return a 2D array of signal strengths (dBm)
+//  and a matching 2D array of uncertainty values (0-1).
+// ======================================================
+const signalGrid = [];
+const uncertaintyGrid = [];
+
+function generateSignalData() {
+  for (let y = 0; y < GRID_H; y++) {
+    signalGrid[y] = [];
+    uncertaintyGrid[y] = [];
+    for (let x = 0; x < GRID_W; x++) {
+      if (isWall(x, y)) {
+        signalGrid[y][x] = null;
+        uncertaintyGrid[y][x] = null;
+        continue;
+      }
+      let bestSignal = -100;
+      for (const ap of aps) {
+        const dist = Math.sqrt((x - ap.x) ** 2 + (y - ap.y) ** 2);
+        const signal = ap.strength - 2.5 * dist + (Math.random() - 0.5) * 8;
+        bestSignal = Math.max(bestSignal, signal);
+      }
+      signalGrid[y][x] = Math.max(-95, Math.min(-20, bestSignal));
+      const minDist = Math.min(...aps.map(ap => Math.sqrt((x - ap.x) ** 2 + (y - ap.y) ** 2)));
+      uncertaintyGrid[y][x] = Math.min(1, minDist / 30 + Math.random() * 0.2);
+    }
+  }
+}
+generateSignalData();
+
+// ======================================================
+//  HEATMAP
+// ======================================================
+let heatmapMode = 'signal';
+const heatmapCanvas = document.getElementById('heatmapCanvas');
+const hCtx = heatmapCanvas.getContext('2d');
+const heatmapTooltip = document.getElementById('heatmapTooltip');
+
+function signalColor(dbm) {
+  const t = Math.max(0, Math.min(1, (dbm + 95) / 70));
+  if (t < 0.25) return `rgb(${Math.round(200*t*4)}, 60, 80)`;
+  if (t < 0.5)  return `rgb(220, ${Math.round(100+120*(t-0.25)*4)}, 60)`;
+  if (t < 0.75) return `rgb(${Math.round(220-160*(t-0.5)*4)}, 210, 80)`;
+  return `rgb(40, ${Math.round(200-40*(t-0.75)*4)}, ${Math.round(120+100*(t-0.75)*4)})`;
+}
+
+function uncertaintyColor(u) {
+  const r = Math.round(232 * u + 60 * (1 - u));
+  const g = Math.round(67 * u + 40 * (1 - u));
+  const b = Math.round(147 * u + 100 * (1 - u));
+  return `rgba(${r}, ${g}, ${b}, ${0.3 + 0.7 * u})`;
+}
+
+function drawHeatmap() {
+  const cw = heatmapCanvas.width, ch = heatmapCanvas.height;
+  const cellW = cw / GRID_W, cellH = ch / GRID_H;
+  const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+  hCtx.fillStyle = isDark ? '#1a1020' : '#fef6f9';
+  hCtx.fillRect(0, 0, cw, ch);
+
+  for (let y = 0; y < GRID_H; y++) {
+    for (let x = 0; x < GRID_W; x++) {
+      if (isWall(x, y)) {
+        hCtx.fillStyle = isDark ? '#3d2650' : '#e0c8d8';
+        hCtx.fillRect(x * cellW, y * cellH, cellW + 0.5, cellH + 0.5);
+        continue;
+      }
+      const val = heatmapMode === 'signal' ? signalGrid[y][x] : uncertaintyGrid[y][x];
+      if (val === null) continue;
+      hCtx.fillStyle = heatmapMode === 'signal' ? signalColor(val) : uncertaintyColor(val);
+      hCtx.fillRect(x * cellW, y * cellH, cellW + 0.5, cellH + 0.5);
+    }
+  }
+
+  for (const ap of aps) {
+    hCtx.beginPath();
+    hCtx.arc(ap.x * cellW + cellW / 2, ap.y * cellH + cellH / 2, 6, 0, Math.PI * 2);
+    hCtx.fillStyle = '#fff';
+    hCtx.fill();
+    hCtx.strokeStyle = '#00b894';
+    hCtx.lineWidth = 2;
+    hCtx.stroke();
+  }
+  updateLegend();
+}
+
+function updateLegend() {
+  const el = document.getElementById('heatmapLegend');
+  if (heatmapMode === 'signal') {
+    el.innerHTML = `
+      <div class="legend-item"><div class="legend-color" style="background:rgb(40,180,220)"></div> Strong</div>
+      <div class="legend-item"><div class="legend-color" style="background:rgb(60,210,80)"></div> Good</div>
+      <div class="legend-item"><div class="legend-color" style="background:rgb(220,220,60)"></div> Fair</div>
+      <div class="legend-item"><div class="legend-color" style="background:rgb(200,60,80)"></div> Weak</div>`;
+  } else {
+    el.innerHTML = `
+      <div class="legend-item"><div class="legend-color" style="background:rgba(60,40,100,0.4)"></div> Low</div>
+      <div class="legend-item"><div class="legend-color" style="background:rgba(150,55,130,0.6)"></div> Medium</div>
+      <div class="legend-item"><div class="legend-color" style="background:rgba(232,67,147,0.9)"></div> High</div>`;
+  }
+}
+
+function setHeatmapMode(mode, btn) {
+  heatmapMode = mode;
+  document.querySelectorAll('#btnSignal, #btnUncertainty').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  drawHeatmap();
+}
+
+heatmapCanvas.addEventListener('mousemove', (e) => {
+  const rect = heatmapCanvas.getBoundingClientRect();
+  const scaleX = heatmapCanvas.width / rect.width;
+  const scaleY = heatmapCanvas.height / rect.height;
+  const mx = (e.clientX - rect.left) * scaleX;
+  const my = (e.clientY - rect.top) * scaleY;
+  const gx = Math.floor(mx / (heatmapCanvas.width / GRID_W));
+  const gy = Math.floor(my / (heatmapCanvas.height / GRID_H));
+  if (gx < 0 || gx >= GRID_W || gy < 0 || gy >= GRID_H || isWall(gx, gy)) {
+    heatmapTooltip.classList.remove('visible'); return;
+  }
+  const sig = signalGrid[gy][gx];
+  const unc = uncertaintyGrid[gy][gx];
+  if (sig === null) { heatmapTooltip.classList.remove('visible'); return; }
+  heatmapTooltip.innerHTML = `<strong>Cell (${gx}, ${gy})</strong><br>Signal: ${sig.toFixed(1)} dBm<br>Uncertainty: ${(unc * 100).toFixed(0)}%`;
+  heatmapTooltip.style.left = (e.clientX - rect.left + 15) + 'px';
+  heatmapTooltip.style.top = (e.clientY - rect.top - 10) + 'px';
+  heatmapTooltip.classList.add('visible');
+});
+heatmapCanvas.addEventListener('mouseleave', () => heatmapTooltip.classList.remove('visible'));
+
+// ======================================================
+//  ROBOT
+// ======================================================
+const robotCanvas = document.getElementById('robotCanvas');
+const rCtx = robotCanvas.getContext('2d');
+
+const waypoints = [
+  {x:3,y:3},{x:12,y:3},{x:12,y:10},{x:3,y:10},{x:3,y:17},
+  {x:12,y:17},{x:12,y:25},{x:3,y:25},{x:3,y:35},{x:12,y:35},
+  {x:18,y:35},{x:18,y:25},{x:25,y:25},{x:25,y:17},{x:18,y:17},
+  {x:18,y:5},{x:25,y:5},{x:25,y:10},{x:33,y:10},{x:33,y:5},
+  {x:42,y:5},{x:42,y:14},{x:33,y:14},{x:33,y:25},{x:42,y:25},
+  {x:42,y:35},{x:33,y:35},{x:48,y:35},{x:48,y:20},{x:55,y:20},
+  {x:55,y:5},{x:48,y:5},{x:48,y:14},{x:55,y:14},{x:55,y:35},{x:48,y:35}
+];
+
+let robotPos = {x: waypoints[0].x, y: waypoints[0].y};
+let waypointIdx = 0;
+let robotTrail = [];
+let robotRunning = true;
+let robotAngle = 0;
+
+/* REPLACE_WITH_REAL_DATA
+   Replace moveRobot() with WebSocket or polling:
+     const ws = new WebSocket('ws://your-robot-ip/position');
+     ws.onmessage = (e) => {
+       const {x, y, angle} = JSON.parse(e.data);
+       robotPos = {x, y};
+       robotAngle = angle;
+       robotTrail.push({x, y});
+     };
+*/
+function moveRobot() {
+  if (!robotRunning) return;
+  const target = waypoints[(waypointIdx + 1) % waypoints.length];
+  const dx = target.x - robotPos.x, dy = target.y - robotPos.y;
+  const dist = Math.sqrt(dx * dx + dy * dy);
+  if (dist < 0.25) {
+    waypointIdx = (waypointIdx + 1) % waypoints.length;
+  } else {
+    robotPos.x += (dx / dist) * 0.25;
+    robotPos.y += (dy / dist) * 0.25;
+    robotAngle = Math.atan2(dy, dx);
+  }
+  robotTrail.push({x: robotPos.x, y: robotPos.y});
+  if (robotTrail.length > 500) robotTrail.shift();
+}
+
+function drawRobotMap() {
+  const cw = robotCanvas.width, ch = robotCanvas.height;
+  const cellW = cw / GRID_W, cellH = ch / GRID_H;
+  const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+  rCtx.fillStyle = isDark ? '#1a1020' : '#fef6f9';
+  rCtx.fillRect(0, 0, cw, ch);
+
+  rCtx.strokeStyle = isDark ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.04)';
+  rCtx.lineWidth = 0.5;
+  for (let x = 0; x <= GRID_W; x++) { rCtx.beginPath(); rCtx.moveTo(x*cellW,0); rCtx.lineTo(x*cellW,ch); rCtx.stroke(); }
+  for (let y = 0; y <= GRID_H; y++) { rCtx.beginPath(); rCtx.moveTo(0,y*cellH); rCtx.lineTo(cw,y*cellH); rCtx.stroke(); }
+
+  for (const w of walls) {
+    rCtx.fillStyle = isDark ? '#3d2650' : '#e0c8d8';
+    rCtx.fillRect(w.x*cellW, w.y*cellH, w.w*cellW, w.h*cellH);
+  }
+
+  for (const ap of aps) {
+    rCtx.beginPath();
+    rCtx.arc(ap.x*cellW, ap.y*cellH, 50, 0, Math.PI*2);
+    rCtx.fillStyle = 'rgba(0,184,148,0.06)';
+    rCtx.fill();
+    rCtx.beginPath();
+    rCtx.arc(ap.x*cellW, ap.y*cellH, 5, 0, Math.PI*2);
+    rCtx.fillStyle = '#00b894';
+    rCtx.fill();
+  }
+
+  if (robotTrail.length > 1) {
+    for (let i = 1; i < robotTrail.length; i++) {
+      const alpha = i / robotTrail.length;
+      rCtx.beginPath();
+      rCtx.moveTo(robotTrail[i-1].x*cellW, robotTrail[i-1].y*cellH);
+      rCtx.lineTo(robotTrail[i].x*cellW, robotTrail[i].y*cellH);
+      rCtx.strokeStyle = `rgba(232,67,147,${alpha*0.5})`;
+      rCtx.lineWidth = 2;
+      rCtx.stroke();
+    }
+  }
+
+  const rx = robotPos.x*cellW, ry = robotPos.y*cellH;
+  rCtx.save();
+  rCtx.translate(rx, ry);
+  rCtx.rotate(robotAngle);
+  rCtx.beginPath();
+  rCtx.moveTo(10,0); rCtx.lineTo(-6,-7); rCtx.lineTo(-6,7); rCtx.closePath();
+  rCtx.fillStyle = '#e84393';
+  rCtx.fill();
+  rCtx.strokeStyle = '#fd79a8';
+  rCtx.lineWidth = 1.5;
+  rCtx.stroke();
+  rCtx.restore();
+
+  rCtx.beginPath();
+  rCtx.arc(rx, ry, 18 + Math.sin(Date.now()/300)*4, 0, Math.PI*2);
+  rCtx.strokeStyle = 'rgba(232,67,147,0.25)';
+  rCtx.lineWidth = 1;
+  rCtx.stroke();
+}
+
+function toggleRobot() {
+  robotRunning = !robotRunning;
+  document.getElementById('btnPlay').textContent = robotRunning ? 'Pause' : 'Play';
+  document.getElementById('btnPlay').classList.toggle('active', robotRunning);
+}
+
+function resetRobot() {
+  robotTrail = [];
+  waypointIdx = 0;
+  robotPos = {x: waypoints[0].x, y: waypoints[0].y};
+}
+
+// ======================================================
+//  SIGNAL CHART
+// ======================================================
+const signalCanvas = document.getElementById('signalChart');
+const sCtx = signalCanvas.getContext('2d');
+const chartTooltip = document.getElementById('chartTooltip');
+let signalHistory = [];
+const MAX_HISTORY = 120;
+
+/* REPLACE_WITH_REAL_DATA
+   Instead of reading from simulated grid, poll your backend:
+     setInterval(async () => {
+       const res = await fetch('/api/signal/current');
+       const {dbm} = await res.json();
+       signalHistory.push(dbm);
+       if (signalHistory.length > MAX_HISTORY) signalHistory.shift();
+     }, 1000);
+*/
+function updateSignalHistory() {
+  const gx = Math.round(robotPos.x), gy = Math.round(robotPos.y);
+  let val = signalGrid[Math.max(0,Math.min(GRID_H-1,gy))]?.[Math.max(0,Math.min(GRID_W-1,gx))];
+  if (val === null || val === undefined) val = -80;
+  signalHistory.push(val + (Math.random()-0.5)*4);
+  if (signalHistory.length > MAX_HISTORY) signalHistory.shift();
+}
+
+function drawSignalChart() {
+  const cw = signalCanvas.width, ch = signalCanvas.height;
+  const pad = {t:20,r:20,b:25,l:48};
+  const pw = cw-pad.l-pad.r, ph = ch-pad.t-pad.b;
+  const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+
+  sCtx.fillStyle = isDark ? '#1a1020' : '#fef6f9';
+  sCtx.fillRect(0,0,cw,ch);
+
+  sCtx.fillStyle = isDark ? '#6b5a78' : '#b8a5c2';
+  sCtx.font = '11px "DM Sans", system-ui';
+  sCtx.textAlign = 'right';
+  for (const v of [-20,-40,-60,-80,-95]) {
+    const y = pad.t + ((-20-v)/75)*ph;
+    sCtx.fillText(v+'', pad.l-8, y+4);
+    sCtx.strokeStyle = isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.06)';
+    sCtx.beginPath(); sCtx.moveTo(pad.l,y); sCtx.lineTo(cw-pad.r,y); sCtx.stroke();
+  }
+
+  const goodY = pad.t + ((-20-(-50))/75)*ph;
+  const fairY = pad.t + ((-20-(-70))/75)*ph;
+  sCtx.fillStyle = 'rgba(0,184,148,0.06)';
+  sCtx.fillRect(pad.l, pad.t, pw, goodY-pad.t);
+  sCtx.fillStyle = 'rgba(253,203,110,0.06)';
+  sCtx.fillRect(pad.l, goodY, pw, fairY-goodY);
+  sCtx.fillStyle = 'rgba(225,112,85,0.06)';
+  sCtx.fillRect(pad.l, fairY, pw, ph-(fairY-pad.t));
+
+  sCtx.font = '10px "DM Sans"';
+  sCtx.textAlign = 'left';
+  sCtx.fillStyle = 'rgba(0,184,148,0.5)'; sCtx.fillText('Strong', pad.l+4, pad.t+14);
+  sCtx.fillStyle = 'rgba(224,145,0,0.5)'; sCtx.fillText('Fair', pad.l+4, goodY+14);
+  sCtx.fillStyle = 'rgba(225,112,85,0.5)'; sCtx.fillText('Weak', pad.l+4, fairY+14);
+
+  if (signalHistory.length < 2) return;
+  sCtx.beginPath();
+  for (let i=0; i<signalHistory.length; i++) {
+    const x = pad.l + (i/(MAX_HISTORY-1))*pw;
+    const y = pad.t + ((-20-signalHistory[i])/75)*ph;
+    i===0 ? sCtx.moveTo(x,y) : sCtx.lineTo(x,y);
+  }
+  sCtx.strokeStyle = '#e84393';
+  sCtx.lineWidth = 2;
+  sCtx.stroke();
+
+  const grad = sCtx.createLinearGradient(0,pad.t,0,pad.t+ph);
+  grad.addColorStop(0,'rgba(232,67,147,0.18)');
+  grad.addColorStop(1,'rgba(232,67,147,0)');
+  sCtx.lineTo(pad.l+((signalHistory.length-1)/(MAX_HISTORY-1))*pw, pad.t+ph);
+  sCtx.lineTo(pad.l, pad.t+ph);
+  sCtx.closePath();
+  sCtx.fillStyle = grad;
+  sCtx.fill();
+
+  const lastX = pad.l+((signalHistory.length-1)/(MAX_HISTORY-1))*pw;
+  const lastY = pad.t+((-20-signalHistory[signalHistory.length-1])/75)*ph;
+  sCtx.beginPath(); sCtx.arc(lastX,lastY,4,0,Math.PI*2);
+  sCtx.fillStyle = '#fd79a8'; sCtx.fill();
+}
+
+signalCanvas.addEventListener('mousemove', (e) => {
+  const rect = signalCanvas.getBoundingClientRect();
+  const scaleX = signalCanvas.width / rect.width;
+  const mx = (e.clientX - rect.left) * scaleX;
+  const pad = {l:48,r:20};
+  const pw = signalCanvas.width - pad.l - pad.r;
+  const idx = Math.round(((mx-pad.l)/pw)*(signalHistory.length-1));
+  if (idx<0||idx>=signalHistory.length) { chartTooltip.classList.remove('visible'); return; }
+  chartTooltip.innerHTML = `<strong>${signalHistory[idx].toFixed(1)} dBm</strong><br>Sample ${idx+1}`;
+  chartTooltip.style.left = (e.clientX-rect.left+10)+'px';
+  chartTooltip.style.top = '20px';
+  chartTooltip.classList.add('visible');
+});
+signalCanvas.addEventListener('mouseleave', () => chartTooltip.classList.remove('visible'));
+
+// ======================================================
+//  ZONE TABLE
+//  /* REPLACE_WITH_REAL_DATA */
+//  Replace this static array with:
+//    const zones = await fetch('/api/zones').then(r => r.json());
+// ======================================================
+function updateZoneTable() {
+  const zones = [
+    {name:'Main Lobby',   signal:-35, status:'strong', coverage:'95%'},
+    {name:'East Corridor', signal:-58, status:'good',   coverage:'82%'},
+    {name:'West Wing',     signal:-72, status:'fair',   coverage:'68%'},
+    {name:'Server Room',   signal:-28, status:'strong', coverage:'99%'},
+    {name:'Lab Section',   signal:-65, status:'fair',   coverage:'74%'},
+    {name:'Storage Area',  signal:-88, status:'weak',   coverage:'42%'},
+  ];
+
+  const colors = {strong:'#00b894', good:'#e84393', fair:'#e09100', weak:'#e17055'};
+  let html = `<table class="zone-table">
+    <thead><tr><th>Zone</th><th>Signal</th><th>Status</th><th>Coverage</th><th>Trend</th></tr></thead><tbody>`;
+
+  for (const z of zones) {
+    const barW = Math.max(5, (z.signal + 100) * 1.2);
+    html += `<tr>
+      <td style="font-weight:600;">${z.name}</td>
+      <td>
+        <div class="signal-bar-bg"><div class="signal-bar-fill" style="width:${barW}%; background:${colors[z.status]};"></div></div>
+        <div style="font-size:0.72rem; color:var(--text3); margin-top:2px;">${z.signal} dBm</div>
+      </td>
+      <td><span class="status-pill status-${z.status}">${z.status}</span></td>
+      <td>${z.coverage}</td>
+      <td>${z.signal > -50 ? '↗' : z.signal > -70 ? '→' : '↘'}</td>
+    </tr>`;
+  }
+  html += '</tbody></table>';
+  document.getElementById('zoneTable').innerHTML = html;
+}
+updateZoneTable();
+
+// ======================================================
+//  STATS
+// ======================================================
+let frameCount = 0;
+function updateStats() {
+  frameCount++;
+  document.getElementById('dataPointCount').textContent = robotTrail.length;
+  if (signalHistory.length > 0) {
+    const avg = signalHistory.reduce((a,b) => a+b, 0) / signalHistory.length;
+    document.getElementById('avgSignal').textContent = avg.toFixed(0);
+  }
+  document.getElementById('coverage').textContent = Math.min(99, 45 + Math.floor(robotTrail.length / 8)) + '%';
+  document.getElementById('robotSpeed').textContent = (0.3 + Math.random()*0.2).toFixed(1);
+  const secs = Math.floor(frameCount / 30);
+  document.getElementById('lastScan').textContent = secs < 60 ? secs + 's ago' : Math.floor(secs/60) + 'm ago';
+}
+
+// ======================================================
+//  MAIN LOOP
+// ======================================================
+function animate() {
+  moveRobot();
+  updateSignalHistory();
+  drawHeatmap();
+  drawRobotMap();
+  drawSignalChart();
+  updateStats();
+  requestAnimationFrame(animate);
+}
+animate();
+</script>
+
+</body>
+</html>
