@@ -4,7 +4,7 @@
     {
       "name": "gridsense",
       "runtimeExecutable": "npx",
-      "runtimeArgs": ["serve", "C:\Users\Asus\GridSense_Website_auth", "-l", "3457"],
+      "runtimeArgs": ["serve", ".", "-l", "3457"],
       "port": 3457
     }
   ]
