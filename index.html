@@ -329,6 +329,7 @@ function aggregate(samples, points) {
     let c = cells.get(key);
     if (!c) { c = { floor: s.floor, e: ge, n: gn, perAp: new Map(), bestPerPoint: new Map() }; cells.set(key, c); }
     if (!c.perAp.has(s.mac)) c.perAp.set(s.mac, []);
+    if (s.rssi >= 0) continue;
     c.perAp.get(s.mac).push(s.rssi);
     const pk = `${s.e}|${s.n}`;
     c.bestPerPoint.set(pk, Math.max(c.bestPerPoint.get(pk) ?? -200, s.rssi));
@@ -452,7 +453,7 @@ function startReplay() {
     for (const [floor, e, n, mac, rssi, band] of S.model.samples) {
       const k = `${floor}|${e}|${n}`;
       if (!byPoint.has(k)) byPoint.set(k, []);
-      byPoint.get(k).push({ floor, e, n, mac, rssi, band });
+      if (rssi < 0) byPoint.get(k).push({ floor, e, n, mac, rssi, band });
     }
     replayQueue = S.model.trace.map((p) => byPoint.get(`${p.floor}|${p.e}|${p.n}`) || []);
   }
