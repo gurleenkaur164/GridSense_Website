@@ -7,24 +7,24 @@
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
   <style>
     :root {
-      --pink: #e84393; --pink-light: #fd79a8; --pink-soft: #fab1c4;
-      --pink-pale: #ffe0ec; --pink-ghost: #fff0f5; --white: #ffffff;
-      --bg: #fef6f9; --bg2: #ffffff; --card: #ffffff;
-      --border: #f0d4e0; --text: #2d2235; --text2: #7a6b82; --text3: #b8a5c2;
+      --pink: #2e86de; --pink-light: #54a0ff; --pink-soft: #a0c4f1;
+      --pink-pale: #dbeafe; --pink-ghost: #eff6ff; --white: #ffffff;
+      --bg: #f0f5fa; --bg2: #ffffff; --card: #ffffff;
+      --border: #d0dce8; --text: #1a2332; --text2: #5a6a7e; --text3: #8e9bac;
       --green: #00b894; --red: #e17055;
-      --shadow: 0 2px 16px rgba(232,67,147,0.07);
-      --shadow-hover: 0 4px 24px rgba(232,67,147,0.13);
+      --shadow: 0 2px 16px rgba(46,134,222,0.07);
+      --shadow-hover: 0 4px 24px rgba(46,134,222,0.13);
       --radius: 18px;
       --font: 'DM Sans', system-ui, sans-serif;
       --mono: 'Space Mono', monospace;
     }
     [data-theme="dark"] {
-      --bg: #1a1020; --bg2: #231530; --card: #2a1a38;
-      --border: #3d2650; --text: #f0e6f6; --text2: #b8a5c2;
-      --text3: #6b5a78; --pink-ghost: #2a1a38; --pink-pale: #3d2650;
-      --white: #f0e6f6;
+      --bg: #0f1724; --bg2: #162032; --card: #1a2840;
+      --border: #2a3f5f; --text: #e8edf4; --text2: #8e9bac;
+      --text3: #4a5a6e; --pink-ghost: #1a2840; --pink-pale: #2a3f5f;
+      --white: #e8edf4;
       --shadow: 0 2px 16px rgba(0,0,0,0.3);
-      --shadow-hover: 0 4px 24px rgba(232,67,147,0.2);
+      --shadow-hover: 0 4px 24px rgba(46,134,222,0.2);
     }
     * { margin:0; padding:0; box-sizing:border-box; }
     body {
@@ -66,7 +66,7 @@
     }
     .tab.active {
       background: var(--pink); color: white;
-      box-shadow: 0 2px 8px rgba(232,67,147,0.3);
+      box-shadow: 0 2px 8px rgba(46,134,222,0.3);
     }
 
     .form-group { margin-bottom: 1rem; }
@@ -82,7 +82,7 @@
       transition: border-color 0.3s, box-shadow 0.3s; outline: none;
     }
     .form-group input:focus {
-      border-color: var(--pink); box-shadow: 0 0 0 3px rgba(232,67,147,0.1);
+      border-color: var(--pink); box-shadow: 0 0 0 3px rgba(46,134,222,0.1);
     }
 
     .submit-btn {
@@ -116,8 +116,8 @@
       display: flex; align-items: center; justify-content: center;
       transition: transform 0.3s; box-shadow: 0 1px 4px rgba(0,0,0,0.1);
     }
-    [data-theme="dark"] .theme-btn { background: #3d2650; }
-    [data-theme="dark"] .theme-btn::after { content: '🌙'; transform: translateX(22px); background: #4a2d60; }
+    [data-theme="dark"] .theme-btn { background: #2a3f5f; }
+    [data-theme="dark"] .theme-btn::after { content: '🌙'; transform: translateX(22px); background: #1a2840; }
 
     @media (max-width: 480px) {
       .auth-card { padding: 1.5rem; }

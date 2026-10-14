@@ -8,16 +8,16 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
   <style>
     :root {
-      --pink:#e84393; --pink-light:#fd79a8; --pink-soft:#fab1c4; --pink-pale:#ffe0ec; --pink-ghost:#fff0f5;
-      --bg:#fef6f9; --bg2:#ffffff; --card:#ffffff; --border:#f0d4e0;
-      --text:#2d2235; --text2:#7a6b82; --text3:#b8a5c2;
+      --pink:#2e86de; --pink-light:#54a0ff; --pink-soft:#a0c4f1; --pink-pale:#dbeafe; --pink-ghost:#eff6ff;
+      --bg:#f0f5fa; --bg2:#ffffff; --card:#ffffff; --border:#d0dce8;
+      --text:#1a2332; --text2:#5a6a7e; --text3:#8e9bac;
       --green:#00b894; --red:#e17055; --yellow:#e09100; --blue:#2e86de;
-      --shadow:0 2px 16px rgba(232,67,147,0.07); --radius:18px;
+      --shadow:0 2px 16px rgba(46,134,222,0.07); --radius:18px;
       --font:'DM Sans',system-ui,sans-serif; --mono:'Space Mono',monospace;
     }
     [data-theme="dark"] {
-      --bg:#1a1020; --bg2:#231530; --card:#2a1a38; --border:#3d2650;
-      --text:#f0e6f6; --text2:#b8a5c2; --text3:#6b5a78; --pink-ghost:#2a1a38; --pink-pale:#3d2650;
+      --bg:#0f1724; --bg2:#162032; --card:#1a2840; --border:#2a3f5f;
+      --text:#e8edf4; --text2:#8e9bac; --text3:#4a5a6e; --pink-ghost:#1a2840; --pink-pale:#2a3f5f;
       --shadow:0 2px 16px rgba(0,0,0,0.3);
     }
     *{margin:0;padding:0;box-sizing:border-box;}
@@ -35,7 +35,7 @@
     @keyframes blink{0%,100%{opacity:1}50%{opacity:.3}}
     .theme-toggle{width:50px;height:26px;background:var(--pink-pale);border-radius:13px;border:2px solid var(--border);cursor:pointer;position:relative;flex-shrink:0;}
     .theme-toggle::after{content:'☀️';font-size:.7rem;position:absolute;top:1px;left:2px;width:20px;height:20px;background:#fff;border-radius:50%;display:flex;align-items:center;justify-content:center;transition:transform .3s;}
-    [data-theme="dark"] .theme-toggle::after{content:'🌙';transform:translateX(22px);background:#4a2d60;}
+    [data-theme="dark"] .theme-toggle::after{content:'🌙';transform:translateX(22px);background:#2a3f5f;}
 
     .wrap{max-width:1440px;margin:0 auto;padding:1.2rem 2.5rem;}
     .toolbar{display:flex;gap:1rem;align-items:center;flex-wrap:wrap;margin-bottom:1rem;}
@@ -583,7 +583,7 @@ function drawMap() {
   if (S.show.path) {
     const pts = currentPoints().filter((p) => p.floor === S.floor);
     if (pts.length > 1) {
-      mctx.strokeStyle = 'rgba(232,67,147,.45)'; mctx.lineWidth = 1.5; mctx.setLineDash([3, 3]);
+      mctx.strokeStyle = 'rgba(46,134,222,.45)'; mctx.lineWidth = 1.5; mctx.setLineDash([3, 3]);
       mctx.beginPath(); pts.forEach((p, i) => i ? mctx.lineTo(X(p.n), Y(p.e)) : mctx.moveTo(X(p.n), Y(p.e))); mctx.stroke();
       mctx.setLineDash([]);
     }
@@ -615,7 +615,7 @@ function drawMap() {
   if (S.robot && S.robot.floor === S.floor) {
     const x = X(S.robot.n), y = Y(S.robot.e), a = -((S.robot.heading || 0) * Math.PI / 180);
     mctx.beginPath(); mctx.arc(x, y, 16 + Math.sin(Date.now() / 300) * 3, 0, Math.PI * 2);
-    mctx.strokeStyle = 'rgba(232,67,147,.35)'; mctx.lineWidth = 2; mctx.stroke();
+    mctx.strokeStyle = 'rgba(46,134,222,.35)'; mctx.lineWidth = 2; mctx.stroke();
     mctx.save(); mctx.translate(x, y); mctx.rotate(a);
     mctx.beginPath(); mctx.moveTo(11, 0); mctx.lineTo(-7, -7); mctx.lineTo(-7, 7); mctx.closePath();
     mctx.fillStyle = css('--pink'); mctx.fill(); mctx.strokeStyle = '#fff'; mctx.lineWidth = 1.5; mctx.stroke();
@@ -773,7 +773,7 @@ function renderStaticCharts() {
   const B = S.model.benchmark;
   const models = [...new Set(B.map((b) => b.model))];
   const strategies = [['a_random_point', 'Random points'], ['b_groupkfold_by_ap', 'Unseen APs'], ['c_spatial_block', 'Unseen areas']];
-  const palette = ['#b8a5c2', '#fd79a8', '#2e86de', '#e09100', '#00b894'];
+  const palette = ['#8e9bac', '#2e86de', '#54a0ff', '#e09100', '#00b894'];
   makeChart('benchChart', {
     type: 'bar',
     data: { labels: strategies.map((s) => s[1]), datasets: models.map((m, i) => ({
@@ -788,7 +788,7 @@ function renderStaticCharts() {
   $('covBadge').textContent = k100 ? `${k100.k} APs → 100%` : '';
   makeChart('covChart', {
     type: 'line',
-    data: { labels: cov.map((r) => r.k), datasets: [{ data: cov.map((r) => r.coverage_pct), borderColor: css('--pink'), backgroundColor: 'rgba(232,67,147,.12)', fill: true, tension: .25, pointRadius: 3 }] },
+    data: { labels: cov.map((r) => r.k), datasets: [{ data: cov.map((r) => r.coverage_pct), borderColor: css('--pink'), backgroundColor: 'rgba(46,134,222,.12)', fill: true, tension: .25, pointRadius: 3 }] },
     options: { plugins: { tooltip: { callbacks: { label: (c) => `${c.parsed.y.toFixed(1)}% covered (adds AP${cov[c.dataIndex].ap_added})` } } },
       scales: { x: { title: { display: true, text: 'APs kept' } }, y: { min: 0, max: 100, title: { display: true, text: 'Scan points covered (%)' } } } },
   });
@@ -803,7 +803,7 @@ function renderStaticCharts() {
   const rh = S.model.residual_hist;
   makeChart('residChart', {
     type: 'bar',
-    data: { labels: rh.map((r) => r.bin), datasets: [{ data: rh.map((r) => r.count), backgroundColor: rh.map((r) => Math.abs(r.bin + 2) <= 8 ? '#00b894' : '#fab1c4'), borderRadius: 3, barPercentage: 1, categoryPercentage: .95 }] },
+    data: { labels: rh.map((r) => r.bin), datasets: [{ data: rh.map((r) => r.count), backgroundColor: rh.map((r) => Math.abs(r.bin + 2) <= 8 ? '#00b894' : '#a0c4f1'), borderRadius: 3, barPercentage: 1, categoryPercentage: .95 }] },
     options: { scales: { x: { title: { display: true, text: 'Residual (dB)' } }, y: { title: { display: true, text: 'Readings' } } } },
   });
 }
@@ -814,7 +814,7 @@ function renderSignalChart() {
   if (!charts.signalChart) {
     makeChart('signalChart', {
       type: 'line',
-      data: { labels: [], datasets: [{ data: [], borderColor: css('--pink'), backgroundColor: 'rgba(232,67,147,.12)', fill: true, tension: .3, pointRadius: 0, borderWidth: 2 }] },
+      data: { labels: [], datasets: [{ data: [], borderColor: css('--pink'), backgroundColor: 'rgba(46,134,222,.12)', fill: true, tension: .3, pointRadius: 0, borderWidth: 2 }] },
       options: { scales: { y: { suggestedMin: -80, suggestedMax: -20, title: { display: true, text: 'Best RSSI (dBm)' } }, x: { ticks: { maxTicksLimit: 8 } } },
         plugins: { tooltip: { callbacks: { title: (c) => { const p = recent[c[0].dataIndex]; return p ? `Floor ${p.floor} · (${p.e} E, ${p.n} N)` : ''; } } } } },
     });
