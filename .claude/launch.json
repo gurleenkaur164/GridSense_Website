@@ -2,10 +2,10 @@
   "version": "0.0.1",
   "configurations": [
     {
-      "name": "capstone",
+      "name": "gridsense",
       "runtimeExecutable": "npx",
-      "runtimeArgs": ["serve", "C:\\Users\\Asus\\capstone-wifi-mapper", "-l", "3456"],
-      "port": 3456
+      "runtimeArgs": ["serve", "C:\Users\Asus\GridSense_Website_auth", "-l", "3457"],
+      "port": 3457
     }
   ]
 }

@@ -3,1041 +3,901 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>SignalScope — WiFi Signal Mapper</title>
+  <title>GridSense — WiFi Signal Mapper</title>
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
   <style>
     :root {
-      --pink: #e84393;
-      --pink-light: #fd79a8;
-      --pink-soft: #fab1c4;
-      --pink-pale: #ffe0ec;
-      --pink-ghost: #fff0f5;
-      --white: #ffffff;
-      --bg: #fef6f9;
-      --bg2: #ffffff;
-      --card: #ffffff;
-      --border: #f0d4e0;
-      --text: #2d2235;
-      --text2: #7a6b82;
-      --text3: #b8a5c2;
-      --green: #00b894;
-      --red: #e17055;
-      --yellow: #fdcb6e;
-      --shadow: 0 2px 16px rgba(232,67,147,0.07);
-      --shadow-hover: 0 4px 24px rgba(232,67,147,0.13);
-      --radius: 18px;
-      --font: 'DM Sans', system-ui, sans-serif;
-      --mono: 'Space Mono', monospace;
+      --pink:#e84393; --pink-light:#fd79a8; --pink-soft:#fab1c4; --pink-pale:#ffe0ec; --pink-ghost:#fff0f5;
+      --bg:#fef6f9; --bg2:#ffffff; --card:#ffffff; --border:#f0d4e0;
+      --text:#2d2235; --text2:#7a6b82; --text3:#b8a5c2;
+      --green:#00b894; --red:#e17055; --yellow:#e09100; --blue:#2e86de;
+      --shadow:0 2px 16px rgba(232,67,147,0.07); --radius:18px;
+      --font:'DM Sans',system-ui,sans-serif; --mono:'Space Mono',monospace;
     }
     [data-theme="dark"] {
-      --bg: #1a1020; --bg2: #231530; --card: #2a1a38;
-      --border: #3d2650; --text: #f0e6f6; --text2: #b8a5c2;
-      --text3: #6b5a78; --pink-ghost: #2a1a38; --pink-pale: #3d2650;
-      --white: #f0e6f6;
-      --shadow: 0 2px 16px rgba(0,0,0,0.3);
-      --shadow-hover: 0 4px 24px rgba(232,67,147,0.2);
+      --bg:#1a1020; --bg2:#231530; --card:#2a1a38; --border:#3d2650;
+      --text:#f0e6f6; --text2:#b8a5c2; --text3:#6b5a78; --pink-ghost:#2a1a38; --pink-pale:#3d2650;
+      --shadow:0 2px 16px rgba(0,0,0,0.3);
     }
-    * { margin:0; padding:0; box-sizing:border-box; }
-    body {
-      font-family: var(--font);
-      background: var(--bg);
-      color: var(--text);
-      min-height: 100vh;
-      transition: background 0.4s, color 0.4s;
-    }
+    *{margin:0;padding:0;box-sizing:border-box;}
+    body{font-family:var(--font);background:var(--bg);color:var(--text);min-height:100vh;transition:background .4s,color .4s;}
 
-    /* ─── NAV ─── */
-    nav {
-      display:flex; align-items:center; justify-content:space-between;
-      padding: 0.9rem 2.5rem;
-      background: var(--bg2); border-bottom: 2px solid var(--border);
-      position:sticky; top:0; z-index:100; transition: background 0.4s;
-    }
-    .logo { display:flex; align-items:center; gap:0.7rem; font-size:1.3rem; font-weight:700; color:var(--pink); letter-spacing:-0.03em; }
-    .logo-dot { width:10px; height:10px; background:var(--pink); border-radius:50%; }
-    .nav-right { display:flex; align-items:center; gap:1.6rem; }
-    .nav-info { font-size:0.8rem; color:var(--text2); display:flex; align-items:center; gap:1.2rem; }
-    .live-dot { width:7px;height:7px;border-radius:50%;background:var(--green);display:inline-block;margin-right:5px;animation:blink 2s infinite; }
-    @keyframes blink{0%,100%{opacity:1}50%{opacity:0.3}}
-
-    .theme-toggle {
-      width:50px;height:26px;background:var(--pink-pale);border-radius:13px;
-      border:2px solid var(--border);cursor:pointer;position:relative;transition:all 0.3s;flex-shrink:0;
-    }
-    .theme-toggle::after {
-      content:'☀️';font-size:0.7rem;position:absolute;top:1px;left:2px;
-      width:20px;height:20px;background:var(--white);border-radius:50%;
-      display:flex;align-items:center;justify-content:center;
-      transition:transform 0.3s;box-shadow:0 1px 4px rgba(0,0,0,0.1);
-    }
-    [data-theme="dark"] .theme-toggle{background:#3d2650;}
+    nav{display:flex;align-items:center;justify-content:space-between;gap:1rem;padding:.9rem 2.5rem;background:var(--bg2);border-bottom:2px solid var(--border);position:sticky;top:0;z-index:100;flex-wrap:wrap;}
+    .logo{display:flex;align-items:center;gap:.6rem;font-size:1.3rem;font-weight:700;color:var(--pink);letter-spacing:-.03em;}
+    .logo-dot{width:10px;height:10px;background:var(--pink);border-radius:50%;}
+    .nav-right{display:flex;align-items:center;gap:1rem;flex-wrap:wrap;}
+    .pill{display:inline-flex;align-items:center;gap:6px;font-size:.76rem;font-weight:600;padding:5px 12px;border-radius:20px;border:1.5px solid var(--border);color:var(--text2);background:var(--bg);}
+    .pill .dot{width:8px;height:8px;border-radius:50%;background:var(--text3);}
+    .pill.on .dot{background:var(--green);animation:blink 1.6s infinite;}
+    .pill.on{color:var(--green);border-color:rgba(0,184,148,.4);}
+    .pill.warn .dot{background:var(--yellow);} .pill.warn{color:var(--yellow);}
+    @keyframes blink{0%,100%{opacity:1}50%{opacity:.3}}
+    .theme-toggle{width:50px;height:26px;background:var(--pink-pale);border-radius:13px;border:2px solid var(--border);cursor:pointer;position:relative;flex-shrink:0;}
+    .theme-toggle::after{content:'☀️';font-size:.7rem;position:absolute;top:1px;left:2px;width:20px;height:20px;background:#fff;border-radius:50%;display:flex;align-items:center;justify-content:center;transition:transform .3s;}
     [data-theme="dark"] .theme-toggle::after{content:'🌙';transform:translateX(22px);background:#4a2d60;}
 
-    /* ─── STATS ─── */
-    .stats-bar {
-      display:grid;grid-template-columns:repeat(4,1fr);gap:1rem;
-      padding:1.3rem 2.5rem 0;max-width:1440px;margin:0 auto;
-    }
-    .stat-card {
-      background:var(--card);border:1.5px solid var(--border);border-radius:var(--radius);
-      padding:1rem 1.2rem;text-align:center;box-shadow:var(--shadow);transition:all 0.4s;
-    }
-    .stat-value { font-family:var(--mono);font-size:1.6rem;font-weight:700;color:var(--pink); }
-    .stat-label { font-size:0.72rem;color:var(--text2);margin-top:2px;font-weight:500;text-transform:uppercase;letter-spacing:0.04em; }
+    .wrap{max-width:1440px;margin:0 auto;padding:1.2rem 2.5rem;}
+    .toolbar{display:flex;gap:1rem;align-items:center;flex-wrap:wrap;margin-bottom:1rem;}
+    .seg{display:inline-flex;gap:4px;background:var(--card);border:1.5px solid var(--border);border-radius:12px;padding:3px;}
+    .btn{padding:5px 13px;border-radius:9px;border:1.5px solid transparent;background:transparent;color:var(--text2);cursor:pointer;font-size:.78rem;font-weight:600;font-family:var(--font);transition:all .2s;}
+    .btn:hover{color:var(--pink);}
+    .btn.active{background:var(--pink);color:#fff;}
+    .btn.outline{border-color:var(--border);background:var(--bg);}
+    .btn:disabled{opacity:.4;cursor:not-allowed;}
+    select.btn{border-color:var(--border);background:var(--bg);}
+    .tb-label{font-size:.7rem;text-transform:uppercase;letter-spacing:.06em;color:var(--text3);font-weight:700;}
 
-    /* ─── DASHBOARD ─── */
-    .dashboard {
-      display:grid;grid-template-columns:1fr 1fr;gap:1.2rem;
-      padding:1.2rem 2.5rem 1rem;max-width:1440px;margin:0 auto;
-    }
-    .card {
-      background:var(--card);border:1.5px solid var(--border);border-radius:var(--radius);
-      padding:1.2rem 1.4rem;box-shadow:var(--shadow);transition:all 0.4s;position:relative;
-    }
-    .card:hover{box-shadow:var(--shadow-hover);border-color:var(--pink-soft);}
-    .card-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:0.9rem;}
-    .card-title{font-size:0.92rem;font-weight:600;color:var(--text);}
-    .card-badge{font-size:0.66rem;padding:3px 9px;border-radius:20px;background:var(--pink-ghost);color:var(--pink);font-weight:700;text-transform:uppercase;letter-spacing:0.04em;}
+    .stats{display:grid;grid-template-columns:repeat(6,1fr);gap:1rem;margin-bottom:1.2rem;}
+    .stat{background:var(--card);border:1.5px solid var(--border);border-radius:var(--radius);padding:.9rem 1rem;text-align:center;box-shadow:var(--shadow);}
+    .stat-value{font-family:var(--mono);font-size:1.45rem;font-weight:700;color:var(--pink);}
+    .stat-label{font-size:.68rem;color:var(--text2);margin-top:2px;font-weight:600;text-transform:uppercase;letter-spacing:.04em;}
+    .stat-sub{font-size:.66rem;color:var(--text3);margin-top:2px;}
 
-    canvas{border-radius:12px;display:block;width:100%;}
+    .grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:1.2rem;}
+    .card{background:var(--card);border:1.5px solid var(--border);border-radius:var(--radius);padding:1.2rem 1.4rem;box-shadow:var(--shadow);position:relative;min-width:0;}
+    .card.full{grid-column:1/-1;}
+    .card-header{display:flex;align-items:center;justify-content:space-between;gap:.6rem;margin-bottom:.8rem;flex-wrap:wrap;}
+    .card-title{font-size:.95rem;font-weight:700;}
+    .card-sub{font-size:.75rem;color:var(--text2);margin-top:2px;}
+    .badge{font-size:.66rem;padding:3px 9px;border-radius:20px;background:var(--pink-ghost);color:var(--pink);font-weight:700;text-transform:uppercase;letter-spacing:.04em;border:1px solid var(--border);}
 
-    .controls{display:flex;gap:0.5rem;}
-    .btn {
-      padding:5px 13px;border-radius:10px;border:1.5px solid var(--border);
-      background:var(--bg);color:var(--text2);cursor:pointer;font-size:0.76rem;
-      font-weight:600;font-family:var(--font);transition:all 0.25s;
-    }
-    .btn:hover{border-color:var(--pink-soft);color:var(--pink);}
-    .btn.active{background:var(--pink);color:#fff;border-color:var(--pink);}
-    .btn.danger{color:var(--red);border-color:var(--red);}
-    .btn.danger:hover{background:var(--red);color:#fff;}
-
-    .legend{display:flex;gap:0.9rem;margin-top:0.6rem;font-size:0.7rem;color:var(--text2);flex-wrap:wrap;font-weight:500;}
-    .legend-item{display:flex;align-items:center;gap:4px;}
-    .legend-color{width:11px;height:11px;border-radius:3px;}
-
-    .tooltip {
-      position:absolute;background:var(--card);border:1.5px solid var(--pink-soft);
-      border-radius:12px;padding:8px 14px;font-size:0.76rem;pointer-events:none;
-      opacity:0;transition:opacity 0.2s;z-index:50;white-space:nowrap;box-shadow:var(--shadow);
-    }
+    .map-wrap{position:relative;}
+    canvas.map{width:100%;display:block;border-radius:12px;}
+    .legend{display:flex;gap:.9rem;margin-top:.6rem;font-size:.72rem;color:var(--text2);flex-wrap:wrap;align-items:center;}
+    .legend-item{display:flex;align-items:center;gap:5px;}
+    .sw{width:12px;height:12px;border-radius:3px;display:inline-block;}
+    .ramp{width:140px;height:10px;border-radius:5px;}
+    .tooltip{position:absolute;background:var(--card);border:1.5px solid var(--pink-soft);border-radius:12px;padding:8px 12px;font-size:.76rem;pointer-events:none;opacity:0;transition:opacity .15s;z-index:50;box-shadow:var(--shadow);line-height:1.5;min-width:180px;}
     .tooltip.visible{opacity:1;}
+    .tooltip b{color:var(--pink);}
 
-    /* ─── ROUTER PANEL ─── */
-    .router-panel {
-      background:var(--card);border:1.5px solid var(--border);border-radius:var(--radius);
-      padding:1.2rem 1.4rem;box-shadow:var(--shadow);transition:all 0.4s;
-      grid-column: 1 / -1;
-    }
-    .router-panel:hover{box-shadow:var(--shadow-hover);border-color:var(--pink-soft);}
-    .router-grid {
-      display:grid;grid-template-columns:repeat(auto-fill, minmax(260px, 1fr));gap:0.8rem;
-      margin-top:0.8rem;
-    }
-    .router-card {
-      background:var(--pink-ghost);border:1.5px solid var(--border);border-radius:14px;
-      padding:1rem;transition:all 0.3s;position:relative;
-    }
-    .router-card:hover{border-color:var(--pink-soft);}
-    .router-card .router-name {
-      font-weight:600;font-size:0.88rem;color:var(--text);margin-bottom:0.5rem;
-      display:flex;align-items:center;gap:6px;
-    }
-    .router-card .router-name .dot {
-      width:8px;height:8px;border-radius:50%;background:var(--green);flex-shrink:0;
-    }
-    .router-field {
-      display:flex;align-items:center;gap:0.5rem;margin-bottom:0.4rem;font-size:0.78rem;
-    }
-    .router-field label {
-      color:var(--text2);width:70px;flex-shrink:0;font-weight:500;
-    }
-    .router-field input, .router-field select {
-      flex:1;padding:5px 10px;border-radius:8px;border:1.5px solid var(--border);
-      background:var(--bg2);color:var(--text);font-family:var(--font);font-size:0.78rem;
-      outline:none;transition:border-color 0.2s;
-    }
-    .router-field input:focus, .router-field select:focus { border-color:var(--pink); }
-    .router-field input[type="range"] {
-      padding:0;-webkit-appearance:none;height:6px;border-radius:3px;
-      background:var(--pink-pale);border:none;cursor:pointer;
-    }
-    .router-field input[type="range"]::-webkit-slider-thumb {
-      -webkit-appearance:none;width:16px;height:16px;border-radius:50%;
-      background:var(--pink);cursor:pointer;border:2px solid var(--white);
-    }
-    .router-actions {
-      display:flex;gap:0.4rem;margin-top:0.6rem;
-    }
-    .router-actions .btn { font-size:0.72rem; padding:4px 10px; }
-    .add-router-card {
-      background:var(--bg);border:2px dashed var(--pink-soft);border-radius:14px;
-      padding:1rem;display:flex;align-items:center;justify-content:center;
-      cursor:pointer;transition:all 0.3s;min-height:120px;
-      color:var(--pink-soft);font-size:0.88rem;font-weight:600;
-    }
-    .add-router-card:hover{border-color:var(--pink);color:var(--pink);background:var(--pink-ghost);}
+    .chart-box{position:relative;height:260px;}
+    table{width:100%;border-collapse:collapse;font-size:.78rem;}
+    th{text-align:left;padding:7px 8px;color:var(--text3);font-weight:700;font-size:.68rem;text-transform:uppercase;letter-spacing:.05em;border-bottom:1.5px solid var(--border);position:sticky;top:0;background:var(--card);}
+    td{padding:7px 8px;border-bottom:1px solid var(--border);}
+    tr:hover td{background:var(--pink-ghost);}
+    td.num,th.num{text-align:right;font-family:var(--mono);font-size:.74rem;}
+    .scroll{max-height:320px;overflow:auto;}
+    .tag{display:inline-block;padding:2px 9px;border-radius:12px;font-size:.66rem;font-weight:700;text-transform:uppercase;}
+    .tag.good{background:rgba(0,184,148,.12);color:var(--green);}
+    .tag.warn{background:rgba(224,145,0,.14);color:var(--yellow);}
+    .tag.bad{background:rgba(225,112,85,.14);color:var(--red);}
 
-    /* ─── ZONE TABLE ─── */
-    .zone-table{width:100%;border-collapse:collapse;font-size:0.8rem;}
-    .zone-table thead th{text-align:left;padding:7px 10px;color:var(--text3);font-weight:600;font-size:0.7rem;text-transform:uppercase;letter-spacing:0.05em;border-bottom:1.5px solid var(--border);}
-    .zone-table thead th:nth-child(n+2){text-align:center;}
-    .zone-table thead th:last-child{text-align:right;}
-    .zone-table tbody tr{border-bottom:1px solid var(--border);transition:background 0.2s;}
-    .zone-table tbody tr:hover{background:var(--pink-ghost);}
-    .zone-table td{padding:9px 10px;}
-    .zone-table td:nth-child(n+2){text-align:center;}
-    .zone-table td:last-child{text-align:right;}
-    .status-pill{display:inline-block;padding:2px 10px;border-radius:12px;font-size:0.68rem;font-weight:700;text-transform:uppercase;letter-spacing:0.03em;}
-    .status-strong{background:rgba(0,184,148,0.12);color:#00b894;}
-    .status-good{background:rgba(232,67,147,0.1);color:var(--pink);}
-    .status-fair{background:rgba(253,203,110,0.2);color:#e09100;}
-    .status-weak{background:rgba(225,112,85,0.12);color:#e17055;}
-    .signal-bar-bg{display:inline-block;width:50px;height:5px;background:var(--pink-pale);border-radius:3px;overflow:hidden;vertical-align:middle;}
-    .signal-bar-fill{height:100%;border-radius:3px;}
+    .feed{font-family:var(--mono);font-size:.72rem;max-height:200px;overflow:auto;border-top:1px solid var(--border);margin-top:.8rem;padding-top:.5rem;}
+    .feed div{padding:2px 0;color:var(--text2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+    .feed .t{color:var(--text3);}
 
-    footer{text-align:center;padding:2.2rem 2rem;font-size:0.75rem;color:var(--text3);border-top:1.5px solid var(--border);}
-    .team-section{margin-bottom:1rem;}
-    .team-title{font-size:0.8rem;font-weight:700;color:var(--pink);margin-bottom:0.5rem;text-transform:uppercase;letter-spacing:0.06em;}
-    .team-leader{font-size:0.82rem;font-weight:600;color:var(--text);margin-bottom:0.5rem;}
-    .team-members{display:flex;justify-content:center;gap:1rem;flex-wrap:wrap;font-size:0.8rem;color:var(--text2);}
-    .team-members span{padding:4px 14px;background:var(--pink-ghost);border:1px solid var(--border);border-radius:20px;font-weight:500;}
-
-    .data-note{background:var(--pink-ghost);border:1.5px dashed var(--pink-soft);border-radius:12px;padding:0.9rem 1.2rem;margin:0 2.5rem;max-width:1390px;font-size:0.8rem;color:var(--text2);line-height:1.6;}
-    .data-note strong{color:var(--pink);}
-
-    /* ─── SUMMARY PANEL ─── */
-    .summary-panel {
-      background:var(--card);border:1.5px solid var(--border);border-radius:var(--radius);
-      padding:1.4rem 1.6rem;box-shadow:var(--shadow);transition:all 0.4s;
-      margin:0 2.5rem;max-width:1390px;
-    }
-    .summary-panel:hover{box-shadow:var(--shadow-hover);border-color:var(--pink-soft);}
-    .summary-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;}
     .summary-grid{display:grid;grid-template-columns:1fr 1fr;gap:1rem;}
-    .summary-block{background:var(--pink-ghost);border-radius:14px;padding:1rem 1.2rem;}
-    .summary-block-title{font-size:0.75rem;font-weight:700;color:var(--pink);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:0.5rem;display:flex;align-items:center;gap:6px;}
-    .summary-block p{font-size:0.82rem;color:var(--text);line-height:1.65;margin:0;}
-    .summary-block ul{font-size:0.82rem;color:var(--text);line-height:1.7;margin:0.3rem 0 0;padding-left:1.2rem;}
-    .summary-block li{margin-bottom:2px;}
-    .summary-block .highlight{color:var(--pink);font-weight:600;}
-    .summary-block .good{color:var(--green);font-weight:600;}
-    .summary-block .warn{color:#e09100;font-weight:600;}
-    .summary-block .bad{color:var(--red);font-weight:600;}
-    .summary-timestamp{font-size:0.72rem;color:var(--text3);font-style:italic;}
-    @media(max-width:900px){
-      .summary-grid{grid-template-columns:1fr;}
-      .summary-panel{margin:0 1rem;}
-    }
+    .sblock{background:var(--pink-ghost);border-radius:14px;padding:1rem 1.2rem;border:1px solid var(--border);}
+    .sblock h4{font-size:.74rem;font-weight:700;color:var(--pink);text-transform:uppercase;letter-spacing:.05em;margin-bottom:.5rem;}
+    .sblock p,.sblock li{font-size:.82rem;line-height:1.65;}
+    .sblock ul{padding-left:1.1rem;}
+    .hl{color:var(--pink);font-weight:700;} .good{color:var(--green);font-weight:700;} .warn{color:var(--yellow);font-weight:700;} .bad{color:var(--red);font-weight:700;}
 
-    /* ─── PLACE MODE BANNER ─── */
-    .place-banner {
-      position:fixed;bottom:24px;left:50%;transform:translateX(-50%);
-      background:var(--pink);color:#fff;padding:10px 28px;border-radius:14px;
-      font-size:0.85rem;font-weight:600;box-shadow:0 4px 20px rgba(232,67,147,0.4);
-      z-index:200;display:none;animation:slideUp 0.3s ease;
-    }
-    .place-banner.visible{display:flex;align-items:center;gap:12px;}
-    .place-banner .btn{background:rgba(255,255,255,0.2);border-color:rgba(255,255,255,0.3);color:#fff;}
-    .place-banner .btn:hover{background:rgba(255,255,255,0.4);}
-    @keyframes slideUp{from{transform:translateX(-50%) translateY(20px);opacity:0}to{transform:translateX(-50%) translateY(0);opacity:1}}
+    .note{background:var(--pink-ghost);border:1.5px dashed var(--pink-soft);border-radius:12px;padding:.9rem 1.2rem;font-size:.8rem;color:var(--text2);line-height:1.6;margin-top:1.2rem;}
+    .note strong{color:var(--pink);}
+    .note code{font-family:var(--mono);font-size:.74rem;}
 
+    footer{text-align:center;padding:2rem;font-size:.75rem;color:var(--text3);border-top:1.5px solid var(--border);margin-top:1.5rem;}
+    .team-title{font-size:.8rem;font-weight:700;color:var(--pink);margin-bottom:.5rem;text-transform:uppercase;letter-spacing:.06em;}
+    .team-leader{font-size:.82rem;font-weight:600;color:var(--text);margin-bottom:.5rem;}
+    .team-members{display:flex;justify-content:center;gap:.6rem;flex-wrap:wrap;font-size:.8rem;color:var(--text2);margin-bottom:1rem;}
+    .team-members span{padding:4px 14px;background:var(--pink-ghost);border:1px solid var(--border);border-radius:20px;}
+
+    @media(max-width:1100px){.stats{grid-template-columns:repeat(3,1fr);}}
     @media(max-width:900px){
-      .dashboard,.stats-bar{grid-template-columns:1fr;padding-left:1rem;padding-right:1rem;}
-      nav{padding:0.9rem 1rem;}
-      .nav-info{display:none;}
-      .data-note{margin:0 1rem;}
-      .router-grid{grid-template-columns:1fr;}
+      nav,.wrap{padding-left:1rem;padding-right:1rem;}
+      .grid,.summary-grid{grid-template-columns:1fr;}
+      .stats{grid-template-columns:repeat(2,1fr);}
     }
   </style>
 </head>
 <body>
 <script>
-  if (!localStorage.getItem('token')) {
-    window.location.href = '/login.html';
-  }
-  document.addEventListener('DOMContentLoaded', function() {
-    var name = localStorage.getItem('userName');
-    var el = document.getElementById('userGreeting');
-    if (el && name) el.textContent = 'Hi, ' + name;
-  });
-  function logout() {
-    localStorage.removeItem('token');
-    localStorage.removeItem('userName');
-    window.location.href = '/login.html';
-  }
+  if (!localStorage.getItem('token')) window.location.href = '/login.html';
+  (function(){ const s = localStorage.getItem('signalscope-theme'); if (s) document.documentElement.setAttribute('data-theme', s); })();
 </script>
 
 <nav>
-  <div class="logo"><span class="logo-dot"></span> SignalScope</div>
+  <div class="logo"><span class="logo-dot"></span> GridSense</div>
   <div class="nav-right">
-    <div class="nav-info">
-      <span><span class="live-dot"></span>Robot Online</span>
-      <span>Last scan: <strong id="lastScan">just now</strong></span>
-      <span>Points: <strong id="dataPointCount">0</strong></span>
-    </div>
+    <span class="pill" id="robotPill"><span class="dot"></span><span id="robotPillText">Connecting…</span></span>
+    <span class="pill" id="dataPill"><span class="dot"></span><span id="dataPillText">Loading data…</span></span>
     <div class="theme-toggle" onclick="toggleTheme()" title="Toggle dark/light mode"></div>
-    <div style="display:flex;align-items:center;gap:0.8rem;">
-      <span id="userGreeting" style="font-size:0.82rem;color:var(--text2);font-weight:500;"></span>
-      <button onclick="logout()" style="padding:5px 14px;border-radius:10px;border:1.5px solid var(--border);background:var(--pink-ghost);color:var(--pink);font-size:0.78rem;font-weight:600;cursor:pointer;font-family:var(--font);transition:all 0.3s;" onmouseover="this.style.background='var(--pink)';this.style.color='white'" onmouseout="this.style.background='var(--pink-ghost)';this.style.color='var(--pink)'">Logout</button>
-    </div>
+    <span id="userGreeting" style="font-size:.82rem;color:var(--text2);font-weight:500;"></span>
+    <button class="btn outline" onclick="logout()">Logout</button>
   </div>
 </nav>
 
-<div class="stats-bar">
-  <div class="stat-card"><div class="stat-value" id="avgSignal">-52</div><div class="stat-label">Avg Signal (dBm)</div></div>
-  <div class="stat-card"><div class="stat-value" id="coverage">78%</div><div class="stat-label">Area Covered</div></div>
-  <div class="stat-card"><div class="stat-value" id="weakZones">3</div><div class="stat-label">Weak Zones</div></div>
-  <div class="stat-card"><div class="stat-value" id="robotSpeed">0.4</div><div class="stat-label">Robot Speed (m/s)</div></div>
-</div>
+<div class="wrap">
+  <div class="toolbar">
+    <span class="tb-label">Data source</span>
+    <div class="seg" id="sourceSeg">
+      <button class="btn active" data-src="baseline">Survey model</button>
+      <button class="btn" data-src="live">Live robot</button>
+      <button class="btn" data-src="replay">Replay survey</button>
+    </div>
+    <select class="btn" id="sessionSelect" title="Live session" style="display:none"></select>
+    <span class="tb-label" style="margin-left:auto">Floor</span>
+    <div class="seg" id="floorSeg"></div>
+  </div>
 
-<div class="dashboard">
+  <div class="stats">
+    <div class="stat"><div class="stat-value" id="sAvg">–</div><div class="stat-label">Avg best RSSI (dBm)</div><div class="stat-sub" id="sAvgSub"></div></div>
+    <div class="stat"><div class="stat-value" id="sCells">–</div><div class="stat-label">Cells mapped</div><div class="stat-sub" id="sCellsSub"></div></div>
+    <div class="stat"><div class="stat-value" id="sAps">–</div><div class="stat-label">Access points</div><div class="stat-sub" id="sApsSub"></div></div>
+    <div class="stat"><div class="stat-value" id="sCont">–</div><div class="stat-label">Avg contention</div><div class="stat-sub">co-channel APs per cell</div></div>
+    <div class="stat"><div class="stat-value" id="sFlag">–</div><div class="stat-label">Cells needing action</div><div class="stat-sub" id="sFlagSub"></div></div>
+    <div class="stat"><div class="stat-value" id="sRmse">–</div><div class="stat-label">Model RMSE (dB)</div><div class="stat-sub">hybrid, spatial-block CV</div></div>
+  </div>
 
-  <!-- HEATMAP -->
-  <div class="card">
-    <div class="card-header">
-      <div class="card-title">Signal Strength Heatmap</div>
-      <div class="controls">
-        <button class="btn active" id="btnSignal" onclick="setHeatmapMode('signal',this)">Signal</button>
-        <button class="btn" id="btnUncertainty" onclick="setHeatmapMode('uncertainty',this)">Uncertainty</button>
+  <div class="grid">
+    <!-- FLOOR MAP -->
+    <div class="card full">
+      <div class="card-header">
+        <div>
+          <div class="card-title" id="mapTitle">Floor map</div>
+          <div class="card-sub" id="mapSub">Robot scan grid, coloured by the selected layer. Hover a cell for details.</div>
+        </div>
+        <div style="display:flex;gap:.6rem;flex-wrap:wrap;align-items:center">
+          <div class="seg" id="layerSeg">
+            <button class="btn active" data-layer="signal">Signal</button>
+            <button class="btn" data-layer="contention">Contention</button>
+            <button class="btn" data-layer="variability">Variability</button>
+            <button class="btn" data-layer="action">Action</button>
+          </div>
+          <div class="seg">
+            <button class="btn active" id="tglAps" onclick="toggleOpt('aps',this)">APs</button>
+            <button class="btn" id="tglTrue" onclick="toggleOpt('truth',this)">Ground truth</button>
+            <button class="btn active" id="tglPath" onclick="toggleOpt('path',this)">Path</button>
+          </div>
+        </div>
       </div>
-    </div>
-    <canvas id="heatmapCanvas" width="600" height="400"></canvas>
-    <div class="legend" id="heatmapLegend"></div>
-    <div class="tooltip" id="heatmapTooltip"></div>
-  </div>
-
-  <!-- ROBOT MAP -->
-  <div class="card">
-    <div class="card-header">
-      <div class="card-title">Robot Path & Floor Plan</div>
-      <div class="controls">
-        <button class="btn active" id="btnPlay" onclick="toggleRobot()">Pause</button>
-        <button class="btn" onclick="resetRobot()">Reset</button>
+      <div class="map-wrap">
+        <canvas class="map" id="mapCanvas"></canvas>
+        <div class="tooltip" id="mapTip"></div>
       </div>
+      <div class="legend" id="mapLegend"></div>
     </div>
-    <canvas id="robotCanvas" width="600" height="400"></canvas>
-    <div class="legend">
-      <div class="legend-item"><div class="legend-color" style="background:var(--pink)"></div> Robot</div>
-      <div class="legend-item"><div class="legend-color" style="background:var(--pink-soft)"></div> Trail</div>
-      <div class="legend-item"><div class="legend-color" style="background:var(--green)"></div> Access Points</div>
-      <div class="legend-item"><div class="legend-color" style="background:var(--text3)"></div> Walls</div>
-    </div>
-  </div>
 
-  <!-- ROUTER CONFIGURATOR -->
-  <div class="router-panel">
-    <div class="card-header">
-      <div class="card-title">Router / Access Point Configuration</div>
-      <div class="controls">
-        <button class="btn" id="btnPlaceMode" onclick="enterPlaceMode()">+ Place on Map</button>
-        <button class="btn" onclick="addRouterManual()">+ Add Manually</button>
+    <!-- LIVE SIGNAL -->
+    <div class="card">
+      <div class="card-header">
+        <div>
+          <div class="card-title">Signal at robot position</div>
+          <div class="card-sub">Strongest AP per scan point, in arrival order</div>
+        </div>
+        <span class="badge" id="liveBadge">idle</span>
       </div>
+      <div class="chart-box"><canvas id="signalChart"></canvas></div>
+      <div class="feed" id="feed"><div class="t">No readings streamed yet. Switch to “Live robot” or “Replay survey”.</div></div>
     </div>
-    <div class="router-grid" id="routerGrid"></div>
-  </div>
 
-  <!-- SIGNAL CHART -->
-  <div class="card">
-    <div class="card-header">
-      <div class="card-title">Signal Strength Over Time</div>
-      <div class="card-badge">Live</div>
+    <!-- ACCESS POINTS -->
+    <div class="card">
+      <div class="card-header">
+        <div>
+          <div class="card-title">Access points (estimated positions)</div>
+          <div class="card-sub">Joint non-linear least-squares fit of the log-distance model</div>
+        </div>
+        <span class="badge" id="apBadge">–</span>
+      </div>
+      <div class="scroll" id="apTable"></div>
     </div>
-    <canvas id="signalChart" width="600" height="280"></canvas>
-    <div class="tooltip" id="chartTooltip"></div>
-  </div>
 
-  <!-- ZONE TABLE -->
-  <div class="card">
-    <div class="card-header">
-      <div class="card-title">Zone Analysis</div>
-      <div class="card-badge" id="zoneBadge">6 zones</div>
+    <!-- MODEL BENCHMARK -->
+    <div class="card">
+      <div class="card-header">
+        <div>
+          <div class="card-title">RSSI prediction benchmark</div>
+          <div class="card-sub">Mean RMSE over 5 folds — lower is better</div>
+        </div>
+        <span class="badge">ML</span>
+      </div>
+      <div class="chart-box"><canvas id="benchChart"></canvas></div>
     </div>
-    <div id="zoneTable" style="overflow-y:auto;max-height:280px;"></div>
-  </div>
 
-</div>
+    <!-- COVERAGE VS AP COUNT -->
+    <div class="card">
+      <div class="card-header">
+        <div>
+          <div class="card-title">Coverage vs. number of APs</div>
+          <div class="card-sub">Greedy AP selection — how many APs the building actually needs</div>
+        </div>
+        <span class="badge" id="covBadge">–</span>
+      </div>
+      <div class="chart-box"><canvas id="covChart"></canvas></div>
+    </div>
 
-<div class="summary-panel" id="summaryPanel">
-  <div class="summary-header">
-    <div class="card-title">Summary & Insights</div>
-    <div style="display:flex;align-items:center;gap:0.8rem;">
-      <span class="summary-timestamp" id="summaryTimestamp">Updated just now</span>
-      <button class="btn" onclick="updateSummary()">Refresh</button>
+    <!-- FEATURE IMPORTANCE -->
+    <div class="card">
+      <div class="card-header">
+        <div>
+          <div class="card-title">What drives the residual model</div>
+          <div class="card-sub">Feature importance of the RF correction in the hybrid model</div>
+        </div>
+      </div>
+      <div class="chart-box"><canvas id="featChart"></canvas></div>
+    </div>
+
+    <!-- RESIDUALS -->
+    <div class="card">
+      <div class="card-header">
+        <div>
+          <div class="card-title">Physics model residuals</div>
+          <div class="card-sub">Measured − predicted RSSI across all readings</div>
+        </div>
+      </div>
+      <div class="chart-box"><canvas id="residChart"></canvas></div>
+    </div>
+
+    <!-- SUMMARY -->
+    <div class="card full">
+      <div class="card-header">
+        <div class="card-title">Summary &amp; recommendations</div>
+        <span class="card-sub" id="summaryTime"></span>
+      </div>
+      <div class="summary-grid" id="summary"></div>
     </div>
   </div>
-  <div class="summary-grid" id="summaryContent">
-    <div class="summary-block"><p>Loading analysis...</p></div>
+
+  <div class="note" id="note">
+    <strong>How data flows:</strong> the robot posts each scan to <code>/api/ingest</code> (pose + list of AP RSSI readings).
+    “Live robot” polls <code>/api/live</code> every 3&nbsp;s and rebuilds the map from the database as readings arrive.
+    “Survey model” shows the analysed output of the recorded survey (heatmap, contention, clustering, AP localisation, ML benchmark).
+    “Replay survey” streams the recorded readings through the same live pipeline in your browser, for demos without the robot.
   </div>
-</div>
-
-<div class="place-banner" id="placeBanner">
-  Click anywhere on the heatmap to place a router
-  <button class="btn" onclick="exitPlaceMode()">Cancel</button>
-</div>
-
-<div class="data-note">
-  <strong>Note:</strong> This dashboard runs on <strong>simulated data</strong>.
-  Click <strong>"+ Place on Map"</strong> to click the heatmap and drop a router, or <strong>"+ Add Manually"</strong> to type in details.
-  Drag router dots on the heatmap to reposition them. The heatmap recalculates live.
 </div>
 
 <footer>
-  <div class="team-section">
-    <div class="team-title">Team</div>
-    <div class="team-leader">Team Leader: Gautam Narang</div>
-    <div class="team-members">
-      <span>Gurleen Kaur</span><span>Samreet Kaur</span><span>Ojas Gambhir</span><span>Arushi Bhateja</span>
-    </div>
-  </div>
-  SignalScope — Capstone Project 2026 &nbsp;·&nbsp; WiFi Signal Mapping Robot
+  <div class="team-title">Team</div>
+  <div class="team-leader">Team Leader: Gautam Narang</div>
+  <div class="team-members"><span>Gurleen Kaur</span><span>Samreet Kaur</span><span>Ojas Gambhir</span><span>Arushi Bhateja</span></div>
+  GridSense — Capstone Project 2026 · WiFi Signal Mapping Robot
 </footer>
 
 <script>
 // ======================================================
-//  THEME
+//  STATE
 // ======================================================
+const POLL_MS = 3000;
+const ROBOT_ONLINE_S = 30;
+const CELL_M = 2;               // live scans are binned onto a 2 m grid, like the survey grid
+const WEAK_DBM = -67;           // below this the best AP is too weak for reliable VoIP / video
+const ROUGH_STD_DB = 4;         // spatial std above this marks small-scale fading
+
+const S = {
+  model: null,                  // data/gridsense.json
+  source: 'baseline',
+  floor: 1,
+  layer: 'signal',
+  show: { aps: true, truth: false, path: true },
+  live: { since: 0, session: null, sessions: [], robots: [], samples: [], points: [], apiOk: null },
+  replay: { idx: 0, timer: null, samples: [], points: [] },
+  cells: [],                    // cells currently shown (all floors)
+  robot: null,                  // {floor,e,n,heading}
+};
+
+const $ = (id) => document.getElementById(id);
+const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));
+const css = (v) => getComputedStyle(document.documentElement).getPropertyValue(v).trim();
+const mean = (a) => a.length ? a.reduce((x, y) => x + y, 0) / a.length : NaN;
+const std = (a) => { if (a.length < 2) return NaN; const m = mean(a); return Math.sqrt(a.reduce((s, x) => s + (x - m) ** 2, 0) / (a.length - 1)); };
+
 function toggleTheme() {
   const next = document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
   document.documentElement.setAttribute('data-theme', next);
   localStorage.setItem('signalscope-theme', next);
+  renderAll();
 }
-(function(){ const s = localStorage.getItem('signalscope-theme'); if(s) document.documentElement.setAttribute('data-theme', s); })();
-
-// ======================================================
-//  FLOOR PLAN
-// ======================================================
-const GRID_W = 60, GRID_H = 40;
-const walls = [
-  {x:0,y:0,w:60,h:1},{x:0,y:39,w:60,h:1},{x:0,y:0,w:1,h:40},{x:59,y:0,w:1,h:40},
-  {x:15,y:0,w:1,h:15},{x:15,y:20,w:1,h:20},{x:30,y:0,w:1,h:18},{x:30,y:23,w:1,h:17},
-  {x:45,y:0,w:1,h:12},{x:45,y:17,w:1,h:23},{x:0,y:20,w:10,h:1},{x:20,y:12,w:10,h:1},{x:35,y:28,w:10,h:1},
-];
-
-const aps = [
-  {x:8, y:10, strength:-30, name:'AP-1 (Main Lobby)', band:'2.4 GHz'},
-  {x:22, y:30, strength:-35, name:'AP-2 (East Wing)', band:'5 GHz'},
-  {x:50, y:8,  strength:-28, name:'AP-3 (Server Room)', band:'5 GHz'},
-  {x:38, y:35, strength:-40, name:'AP-4 (Lab)', band:'2.4 GHz'},
-];
-
-let apCounter = aps.length;
-
-function isWall(gx, gy) {
-  for (const w of walls)
-    if (gx >= w.x && gx < w.x + w.w && gy >= w.y && gy < w.y + w.h) return true;
-  return false;
+function logout() {
+  localStorage.removeItem('token'); localStorage.removeItem('userName');
+  window.location.href = '/login.html';
 }
 
 // ======================================================
-//  SIGNAL DATA
+//  AGGREGATION — raw readings -> grid cells
+//  Mirrors the survey pipeline: per cell, average each AP's RSSI, then
+//  best AP, number of visible APs, best-second gap, contention and spatial std.
 // ======================================================
-const signalGrid = [], uncertaintyGrid = [];
+function aggregate(samples, points) {
+  const cells = new Map();
+  for (const s of samples) {
+    const ge = Math.round(s.e / CELL_M) * CELL_M, gn = Math.round(s.n / CELL_M) * CELL_M;
+    const key = `${s.floor}|${ge}|${gn}`;
+    let c = cells.get(key);
+    if (!c) { c = { floor: s.floor, e: ge, n: gn, perAp: new Map(), bestPerPoint: new Map() }; cells.set(key, c); }
+    if (!c.perAp.has(s.mac)) c.perAp.set(s.mac, []);
+    c.perAp.get(s.mac).push(s.rssi);
+    const pk = `${s.e}|${s.n}`;
+    c.bestPerPoint.set(pk, Math.max(c.bestPerPoint.get(pk) ?? -200, s.rssi));
+  }
+  const out = [];
+  for (const c of cells.values()) {
+    const apMeans = [...c.perAp.values()].map(mean).sort((a, b) => b - a);
+    const best = apMeans[0];
+    const pts = [...c.bestPerPoint.values()];
+    const spatialStd = std(pts);
+    // contention: APs whose signal is within 20 dB of the best one (they compete for airtime)
+    const contention = apMeans.filter((v) => v >= best - 20).length - 1;
+    let action = 'no action', cluster_name = 'strong uniform';
+    if (best < WEAK_DBM) { action = 'coverage gap: add or move an AP'; cluster_name = 'weak'; }
+    else if (spatialStd > ROUGH_STD_DB) { action = 'small-scale fading: siting issue, not coverage'; cluster_name = 'strong rough'; }
+    out.push({
+      floor: c.floor, e: c.e, n: c.n,
+      rssi_best_mean: mean(pts),
+      rssi_spatial_std: Number.isFinite(spatialStd) ? spatialStd : null,
+      rssi_all_mean: mean(apMeans),
+      n_aps_visible: apMeans.length,
+      best_second_gap: apMeans.length > 1 ? apMeans[0] - apMeans[1] : null,
+      n_samples: pts.length,
+      contention, cluster_name, action,
+    });
+  }
+  return out;
+}
 
-function generateSignalData() {
-  for (let y = 0; y < GRID_H; y++) {
-    signalGrid[y] = []; uncertaintyGrid[y] = [];
-    for (let x = 0; x < GRID_W; x++) {
-      if (isWall(x, y)) { signalGrid[y][x] = null; uncertaintyGrid[y][x] = null; continue; }
-      let best = -100;
-      for (const ap of aps) {
-        const d = Math.sqrt((x-ap.x)**2 + (y-ap.y)**2);
-        best = Math.max(best, ap.strength - 2.5*d + (Math.random()-0.5)*6);
-      }
-      signalGrid[y][x] = Math.max(-95, Math.min(-20, best));
-      const minD = Math.min(...aps.map(a => Math.sqrt((x-a.x)**2 + (y-a.y)**2)));
-      uncertaintyGrid[y][x] = Math.min(1, minD/30 + Math.random()*0.15);
+// ======================================================
+//  SOURCES
+// ======================================================
+function currentCells() {
+  if (S.source === 'baseline') return S.model.cells;
+  if (S.source === 'live') return aggregate(S.live.samples);
+  return aggregate(S.replay.samples);
+}
+function currentPoints() {
+  if (S.source === 'baseline') return S.model.trace;
+  return S.source === 'live' ? S.live.points : S.replay.points;
+}
+
+function setSource(src) {
+  S.source = src;
+  document.querySelectorAll('#sourceSeg .btn').forEach((b) => b.classList.toggle('active', b.dataset.src === src));
+  $('sessionSelect').style.display = src === 'live' && S.live.sessions.length ? '' : 'none';
+  if (src === 'replay') startReplay(); else stopReplay();
+  if (src !== 'live') S.robot = src === 'baseline' ? null : S.robot;
+  if (src === 'live') S.robot = liveRobot();
+  refresh();
+}
+
+// ---------- Live (database) ----------
+function liveRobot() {
+  const r = S.live.robots.find((x) => x.session_id === S.live.session) || S.live.robots[0];
+  return r && r.floor != null ? { floor: r.floor, e: r.e, n: r.n, heading: r.heading } : null;
+}
+
+async function pollLive() {
+  const token = localStorage.getItem('token');
+  try {
+    const q = new URLSearchParams({ since: S.live.since });
+    if (S.live.session) q.set('session', S.live.session);
+    const res = await fetch('/api/live?' + q, { headers: { Authorization: 'Bearer ' + token } });
+    if (res.status === 401) return logout();
+    if (!res.ok) throw new Error(res.status);
+    const d = await res.json();
+    S.live.apiOk = true;
+    S.live.robots = d.robots || [];
+    S.live.sessions = d.sessions || [];
+    if (!S.live.session && d.session) S.live.session = d.session;
+    renderSessionSelect();
+
+    const fresh = d.scans || [];
+    for (const s of fresh) {
+      S.live.samples.push({ floor: +s.floor, e: +s.e, n: +s.n, mac: s.mac, rssi: +s.rssi, band: s.band, ssid: s.ssid, t: s.created_at });
+      S.live.since = Math.max(S.live.since, +s.id);
+    }
+    if (fresh.length) {
+      groupPoints(fresh.map((s) => ({ floor: +s.floor, e: +s.e, n: +s.n, mac: s.mac, rssi: +s.rssi, ssid: s.ssid, t: s.created_at })), S.live.points);
+      if (S.source === 'live') pushFeed(fresh);
+    }
+    const online = S.live.robots.some((r) => r.age_s < ROBOT_ONLINE_S);
+    // Jump to live view automatically the first time a robot comes online
+    if (online && !S.live.autoSwitched && S.source === 'baseline') { S.live.autoSwitched = true; setSource('live'); }
+    if (S.source === 'live') { S.robot = liveRobot(); if (fresh.length || online) refresh(); }
+  } catch (err) {
+    S.live.apiOk = false;
+  }
+  renderStatus();
+}
+
+function renderSessionSelect() {
+  const sel = $('sessionSelect');
+  const html = S.live.sessions.map((s) => `<option value="${esc(s.session_id)}" ${s.session_id === S.live.session ? 'selected' : ''}>${esc(s.session_id)} · ${s.readings} readings</option>`).join('');
+  if (sel.innerHTML !== html) sel.innerHTML = html;
+  sel.style.display = S.source === 'live' && S.live.sessions.length ? '' : 'none';
+}
+$('sessionSelect').addEventListener('change', (e) => {
+  S.live.session = e.target.value; S.live.since = 0; S.live.samples = []; S.live.points = [];
+  $('feed').innerHTML = ''; pollLive();
+});
+
+// Groups readings into scan points (one per robot stop) for the signal-over-time chart & path
+function groupPoints(readings, into) {
+  for (const r of readings) {
+    const last = into[into.length - 1];
+    if (last && last.floor === r.floor && last.e === r.e && last.n === r.n) {
+      last.best = Math.max(last.best, r.rssi); last.count++;
+    } else {
+      into.push({ floor: r.floor, e: r.e, n: r.n, best: r.rssi, count: 1, t: r.t });
     }
   }
 }
-generateSignalData();
 
-// ======================================================
-//  ROUTER PANEL
-// ======================================================
-let placeMode = false;
-let draggingAP = null;
-
-function renderRouterPanel() {
-  const grid = document.getElementById('routerGrid');
-  let html = '';
-  aps.forEach((ap, i) => {
-    html += `
-    <div class="router-card" id="rc-${i}">
-      <div class="router-name"><span class="dot"></span>${ap.name}</div>
-      <div class="router-field">
-        <label>Name</label>
-        <input type="text" value="${ap.name}" onchange="updateAP(${i},'name',this.value)">
-      </div>
-      <div class="router-field">
-        <label>Position</label>
-        <span style="font-family:var(--mono);font-size:0.78rem;color:var(--text2);">(${ap.x.toFixed(1)}, ${ap.y.toFixed(1)})</span>
-      </div>
-      <div class="router-field">
-        <label>Strength</label>
-        <input type="range" min="-90" max="-20" value="${ap.strength}" oninput="updateAP(${i},'strength',+this.value); this.nextElementSibling.textContent=this.value+' dBm'" >
-        <span style="font-family:var(--mono);font-size:0.75rem;width:60px;text-align:right;color:var(--text2);">${ap.strength} dBm</span>
-      </div>
-      <div class="router-field">
-        <label>Band</label>
-        <select onchange="updateAP(${i},'band',this.value)">
-          <option ${ap.band==='2.4 GHz'?'selected':''}>2.4 GHz</option>
-          <option ${ap.band==='5 GHz'?'selected':''}>5 GHz</option>
-          <option ${ap.band==='6 GHz'?'selected':''}>6 GHz</option>
-        </select>
-      </div>
-      <div class="router-actions">
-        <button class="btn" onclick="highlightAP(${i})">Locate</button>
-        <button class="btn danger" onclick="removeAP(${i})">Remove</button>
-      </div>
-    </div>`;
-  });
-  html += `<div class="add-router-card" onclick="addRouterManual()">+ Add Router</div>`;
-  grid.innerHTML = html;
-}
-
-function updateAP(i, field, val) {
-  aps[i][field] = val;
-  generateSignalData();
-  renderRouterPanel();
-}
-
-function removeAP(i) {
-  aps.splice(i, 1);
-  generateSignalData();
-  renderRouterPanel();
-}
-
-function addRouterManual() {
-  apCounter++;
-  aps.push({x:30, y:20, strength:-40, name:'AP-'+apCounter+' (New)', band:'2.4 GHz'});
-  generateSignalData();
-  renderRouterPanel();
-}
-
-function highlightAP(i) {
-  highlightedAP = i;
-  setTimeout(() => { highlightedAP = null; }, 2000);
-}
-let highlightedAP = null;
-
-function enterPlaceMode() {
-  placeMode = true;
-  document.getElementById('placeBanner').classList.add('visible');
-  document.getElementById('btnPlaceMode').classList.add('active');
-  heatmapCanvas.style.cursor = 'crosshair';
-}
-
-function exitPlaceMode() {
-  placeMode = false;
-  document.getElementById('placeBanner').classList.remove('visible');
-  document.getElementById('btnPlaceMode').classList.remove('active');
-  heatmapCanvas.style.cursor = '';
-}
-
-// Heatmap click — place router or start drag
-heatmapCanvas.addEventListener('mousedown', (e) => {
-  const rect = heatmapCanvas.getBoundingClientRect();
-  const scaleX = heatmapCanvas.width / rect.width;
-  const scaleY = heatmapCanvas.height / rect.height;
-  const mx = (e.clientX - rect.left) * scaleX;
-  const my = (e.clientY - rect.top) * scaleY;
-  const cellW = heatmapCanvas.width / GRID_W;
-  const cellH = heatmapCanvas.height / GRID_H;
-  const gx = mx / cellW, gy = my / cellH;
-
-  if (placeMode) {
-    apCounter++;
-    aps.push({x: +gx.toFixed(1), y: +gy.toFixed(1), strength:-40, name:'AP-'+apCounter, band:'2.4 GHz'});
-    generateSignalData();
-    renderRouterPanel();
-    exitPlaceMode();
-    return;
-  }
-
-  // Check if clicking near an AP for dragging
-  for (let i = 0; i < aps.length; i++) {
-    const dx = (aps[i].x + 0.5) * cellW - mx;
-    const dy = (aps[i].y + 0.5) * cellH - my;
-    if (Math.sqrt(dx*dx + dy*dy) < 15) {
-      draggingAP = i;
-      heatmapCanvas.style.cursor = 'grabbing';
-      return;
+// ---------- Replay (recorded survey streamed in-browser) ----------
+let replayQueue = null;
+function startReplay() {
+  if (!replayQueue) {
+    const byPoint = new Map();
+    for (const [floor, e, n, mac, rssi, band] of S.model.samples) {
+      const k = `${floor}|${e}|${n}`;
+      if (!byPoint.has(k)) byPoint.set(k, []);
+      byPoint.get(k).push({ floor, e, n, mac, rssi, band });
     }
+    replayQueue = S.model.trace.map((p) => byPoint.get(`${p.floor}|${p.e}|${p.n}`) || []);
   }
-});
-
-heatmapCanvas.addEventListener('mousemove', (e) => {
-  if (draggingAP === null) {
-    // tooltip logic
-    const rect = heatmapCanvas.getBoundingClientRect();
-    const scaleX = heatmapCanvas.width / rect.width;
-    const scaleY = heatmapCanvas.height / rect.height;
-    const mx = (e.clientX - rect.left) * scaleX;
-    const my = (e.clientY - rect.top) * scaleY;
-    const gx = Math.floor(mx / (heatmapCanvas.width / GRID_W));
-    const gy = Math.floor(my / (heatmapCanvas.height / GRID_H));
-
-    // Check if hovering near an AP
-    const cellW = heatmapCanvas.width / GRID_W;
-    const cellH = heatmapCanvas.height / GRID_H;
-    let nearAP = false;
-    for (const ap of aps) {
-      const dx = (ap.x + 0.5) * cellW - mx;
-      const dy = (ap.y + 0.5) * cellH - my;
-      if (Math.sqrt(dx*dx + dy*dy) < 15) { nearAP = true; break; }
-    }
-    heatmapCanvas.style.cursor = placeMode ? 'crosshair' : nearAP ? 'grab' : '';
-
-    if (gx<0||gx>=GRID_W||gy<0||gy>=GRID_H||isWall(gx,gy)){ heatmapTooltip.classList.remove('visible'); return; }
-    const sig = signalGrid[gy]?.[gx];
-    const unc = uncertaintyGrid[gy]?.[gx];
-    if (sig===null||sig===undefined){ heatmapTooltip.classList.remove('visible'); return; }
-    heatmapTooltip.innerHTML = `<strong>Cell (${gx}, ${gy})</strong><br>Signal: ${sig.toFixed(1)} dBm<br>Uncertainty: ${(unc*100).toFixed(0)}%`;
-    heatmapTooltip.style.left = (e.clientX - rect.left + 15) + 'px';
-    heatmapTooltip.style.top = (e.clientY - rect.top - 10) + 'px';
-    heatmapTooltip.classList.add('visible');
-    return;
-  }
-
-  // Dragging
-  const rect = heatmapCanvas.getBoundingClientRect();
-  const scaleX = heatmapCanvas.width / rect.width;
-  const scaleY = heatmapCanvas.height / rect.height;
-  const mx = (e.clientX - rect.left) * scaleX;
-  const my = (e.clientY - rect.top) * scaleY;
-  const cellW = heatmapCanvas.width / GRID_W;
-  const cellH = heatmapCanvas.height / GRID_H;
-  aps[draggingAP].x = +(mx / cellW).toFixed(1);
-  aps[draggingAP].y = +(my / cellH).toFixed(1);
-  generateSignalData();
-  renderRouterPanel();
-});
-
-window.addEventListener('mouseup', () => {
-  if (draggingAP !== null) {
-    draggingAP = null;
-    heatmapCanvas.style.cursor = '';
-  }
-});
-
-heatmapCanvas.addEventListener('mouseleave', () => heatmapTooltip.classList.remove('visible'));
+  if (S.replay.idx >= replayQueue.length) { S.replay = { idx: 0, timer: null, samples: [], points: [] }; $('feed').innerHTML = ''; }
+  clearInterval(S.replay.timer);
+  S.replay.timer = setInterval(stepReplay, 250);
+}
+function stopReplay() { clearInterval(S.replay.timer); S.replay.timer = null; }
+function stepReplay() {
+  if (S.replay.idx >= replayQueue.length) { stopReplay(); renderStatus(); return; }
+  const batch = replayQueue[S.replay.idx++];
+  if (!batch.length) return;
+  const t = new Date().toISOString();
+  batch.forEach((b) => (b.t = t));
+  S.replay.samples.push(...batch);
+  groupPoints(batch, S.replay.points);
+  const p = S.replay.points[S.replay.points.length - 1], prev = S.replay.points[S.replay.points.length - 2];
+  S.robot = { floor: p.floor, e: p.e, n: p.n, heading: prev ? Math.atan2(p.e - prev.e, p.n - prev.n) * 180 / Math.PI : 0 };
+  if (S.robot.floor !== S.floor) setFloor(S.robot.floor, true);
+  pushFeed(batch.map((b) => ({ ...b, created_at: t })));
+  refresh();
+}
 
 // ======================================================
-//  HEATMAP DRAWING
+//  STATUS PILLS
 // ======================================================
-let heatmapMode = 'signal';
-const heatmapCanvas_el = document.getElementById('heatmapCanvas');
-const hCtx = heatmapCanvas_el.getContext('2d');
-const heatmapTooltip_el = document.getElementById('heatmapTooltip');
+function renderStatus() {
+  const rp = $('robotPill'), dp = $('dataPill');
+  const r = S.live.robots[0];
+  rp.className = 'pill';
+  if (S.live.apiOk === false) { $('robotPillText').textContent = 'Robot API offline'; rp.classList.add('warn'); }
+  else if (r && r.age_s < ROBOT_ONLINE_S) {
+    rp.classList.add('on');
+    $('robotPillText').textContent = `${r.device_id} online · F${r.floor}` + (r.battery != null ? ` · ${Math.round(r.battery)}%` : '');
+  } else if (r) $('robotPillText').textContent = `${r.device_id} last seen ${ago(r.age_s)}`;
+  else $('robotPillText').textContent = 'No robot connected yet';
+
+  dp.className = 'pill';
+  if (S.source === 'baseline') $('dataPillText').textContent = `Survey · ${S.model.meta.n_samples.toLocaleString()} readings`;
+  else if (S.source === 'live') { dp.classList.add(r && r.age_s < ROBOT_ONLINE_S ? 'on' : 'warn'); $('dataPillText').textContent = `Live · ${S.live.samples.length.toLocaleString()} readings`; }
+  else { dp.classList.add(S.replay.timer ? 'on' : 'warn'); $('dataPillText').textContent = `Replay · ${S.replay.idx}/${replayQueue ? replayQueue.length : 0} points`; }
+
+  const badge = $('liveBadge');
+  badge.textContent = S.source === 'baseline' ? 'idle' : S.source === 'replay' ? (S.replay.timer ? 'replaying' : 'done') : (r && r.age_s < ROBOT_ONLINE_S ? 'live' : 'waiting');
+}
+function ago(s) { s = Math.round(s); return s < 60 ? s + 's ago' : s < 3600 ? Math.round(s / 60) + 'm ago' : Math.round(s / 3600) + 'h ago'; }
+
+// ======================================================
+//  FLOOR MAP
+// ======================================================
+const map = $('mapCanvas'), mctx = map.getContext('2d');
+let view = null; // projection for hit-testing
 
 function signalColor(dbm) {
-  const t = Math.max(0, Math.min(1, (dbm + 95) / 70));
-  if (t < 0.25) return `rgb(${Math.round(200*t*4)}, 60, 80)`;
-  if (t < 0.5)  return `rgb(220, ${Math.round(100+120*(t-0.25)*4)}, 60)`;
-  if (t < 0.75) return `rgb(${Math.round(220-160*(t-0.5)*4)}, 210, 80)`;
-  return `rgb(40, ${Math.round(200-40*(t-0.75)*4)}, ${Math.round(120+100*(t-0.75)*4)})`;
+  // -75 (red) .. -55 (amber) .. -25 (teal) — tuned to the indoor range we observed
+  const stops = [[-80, [214, 48, 49]], [-67, [225, 112, 85]], [-55, [253, 203, 110]], [-45, [85, 239, 196]], [-30, [0, 184, 148]], [-20, [0, 150, 136]]];
+  if (dbm <= stops[0][0]) return `rgb(${stops[0][1]})`;
+  for (let i = 1; i < stops.length; i++) {
+    if (dbm <= stops[i][0]) {
+      const [a, ca] = stops[i - 1], [b, cb] = stops[i], t = (dbm - a) / (b - a);
+      return `rgb(${ca.map((v, j) => Math.round(v + (cb[j] - v) * t))})`;
+    }
+  }
+  return `rgb(${stops[stops.length - 1][1]})`;
+}
+function seqColor(t) { // 0..1 pale -> pink -> deep purple
+  t = Math.max(0, Math.min(1, t));
+  const a = [255, 224, 236], b = [232, 67, 147], c = [74, 20, 90];
+  const [x, y, u] = t < .5 ? [a, b, t * 2] : [b, c, (t - .5) * 2];
+  return `rgb(${x.map((v, i) => Math.round(v + (y[i] - v) * u))})`;
+}
+const ACTION_COLORS = { 'no action': '#00b894', 'small-scale fading: siting issue, not coverage': '#2e86de', 'coverage gap: add or move an AP': '#e17055' };
+
+function cellColor(c) {
+  switch (S.layer) {
+    case 'contention': return seqColor((c.contention ?? 0) / 18);
+    case 'variability': return c.rssi_spatial_std == null ? css('--text3') : seqColor(c.rssi_spatial_std / 8);
+    case 'action': return ACTION_COLORS[c.action] || css('--text3');
+    default: return signalColor(c.rssi_best_mean);
+  }
 }
 
-function uncertaintyColor(u) {
-  const r = Math.round(232*u + 60*(1-u));
-  const g = Math.round(67*u + 40*(1-u));
-  const b = Math.round(147*u + 100*(1-u));
-  return `rgba(${r},${g},${b},${0.3+0.7*u})`;
-}
+function drawMap() {
+  const dpr = window.devicePixelRatio || 1;
+  const W = map.clientWidth, H = Math.max(260, Math.min(420, W * 0.36));
+  map.width = W * dpr; map.height = H * dpr; map.style.height = H + 'px';
+  mctx.setTransform(dpr, 0, 0, dpr, 0, 0);
 
-function drawHeatmap() {
-  const c = heatmapCanvas_el;
-  const cw = c.width, ch = c.height;
-  const cellW = cw/GRID_W, cellH = ch/GRID_H;
-  const isDark = document.documentElement.getAttribute('data-theme')==='dark';
-  hCtx.fillStyle = isDark ? '#1a1020' : '#fef6f9';
-  hCtx.fillRect(0,0,cw,ch);
+  // fixed building extent (metres) so floors line up when switching
+  const ext = S.model.extent;
+  const pad = { l: 46, r: 16, t: 14, b: 34 };
+  const sx = (W - pad.l - pad.r) / (ext.n1 - ext.n0), sy = (H - pad.t - pad.b) / (ext.e1 - ext.e0);
+  const s = Math.min(sx, sy);
+  const ox = pad.l + ((W - pad.l - pad.r) - s * (ext.n1 - ext.n0)) / 2;
+  const oy = pad.t + ((H - pad.t - pad.b) - s * (ext.e1 - ext.e0)) / 2;
+  const X = (n) => ox + (n - ext.n0) * s, Y = (e) => oy + (ext.e1 - e) * s;
+  view = { X, Y, s };
 
-  for (let y=0;y<GRID_H;y++) for (let x=0;x<GRID_W;x++) {
-    if (isWall(x,y)) { hCtx.fillStyle = isDark?'#3d2650':'#e0c8d8'; hCtx.fillRect(x*cellW,y*cellH,cellW+.5,cellH+.5); continue; }
-    const val = heatmapMode==='signal' ? signalGrid[y][x] : uncertaintyGrid[y][x];
-    if (val===null) continue;
-    hCtx.fillStyle = heatmapMode==='signal' ? signalColor(val) : uncertaintyColor(val);
-    hCtx.fillRect(x*cellW,y*cellH,cellW+.5,cellH+.5);
+  mctx.fillStyle = css('--bg'); mctx.fillRect(0, 0, W, H);
+
+  // grid lines + axes
+  mctx.strokeStyle = css('--border'); mctx.lineWidth = 1; mctx.fillStyle = css('--text3');
+  mctx.font = '10px "DM Sans",system-ui'; mctx.textAlign = 'center';
+  for (let n = Math.ceil(ext.n0 / 10) * 10; n <= ext.n1; n += 10) {
+    mctx.globalAlpha = .5; mctx.beginPath(); mctx.moveTo(X(n), Y(ext.e1)); mctx.lineTo(X(n), Y(ext.e0)); mctx.stroke(); mctx.globalAlpha = 1;
+    mctx.fillText(n + ' m', X(n), Y(ext.e0) + 14);
+  }
+  mctx.textAlign = 'right';
+  for (let e = Math.ceil(ext.e0 / 5) * 5; e <= ext.e1; e += 5) {
+    mctx.globalAlpha = .5; mctx.beginPath(); mctx.moveTo(X(ext.n0), Y(e)); mctx.lineTo(X(ext.n1), Y(e)); mctx.stroke(); mctx.globalAlpha = 1;
+    mctx.fillText(e + ' m', X(ext.n0) - 6, Y(e) + 3);
+  }
+  mctx.textAlign = 'center'; mctx.fillText('North (m) →', X((ext.n0 + ext.n1) / 2), H - 4);
+
+  // cells
+  const cells = S.cells.filter((c) => c.floor === S.floor);
+  const size = Math.max(4, CELL_M * s - 2);
+  for (const c of cells) {
+    mctx.fillStyle = cellColor(c);
+    roundRect(X(c.n) - size / 2, Y(c.e) - size / 2, size, size, 3); mctx.fill();
+  }
+  if (!cells.length) {
+    mctx.fillStyle = css('--text2'); mctx.font = '600 13px "DM Sans"'; mctx.textAlign = 'center';
+    mctx.fillText(S.source === 'live' ? 'Waiting for the robot to scan this floor…' : 'No scan data on this floor yet', W / 2, H / 2);
   }
 
-  // Draw APs
-  aps.forEach((ap,i) => {
-    const cx = ap.x*cellW + cellW/2, cy = ap.y*cellH + cellH/2;
-
-    // Highlight ring
-    if (highlightedAP === i) {
-      hCtx.beginPath(); hCtx.arc(cx,cy, 20+Math.sin(Date.now()/200)*5, 0, Math.PI*2);
-      hCtx.strokeStyle = '#e84393'; hCtx.lineWidth = 3; hCtx.stroke();
-      hCtx.beginPath(); hCtx.arc(cx,cy, 35+Math.sin(Date.now()/300)*5, 0, Math.PI*2);
-      hCtx.strokeStyle = 'rgba(232,67,147,0.3)'; hCtx.lineWidth = 2; hCtx.stroke();
+  // robot path
+  if (S.show.path) {
+    const pts = currentPoints().filter((p) => p.floor === S.floor);
+    if (pts.length > 1) {
+      mctx.strokeStyle = 'rgba(232,67,147,.45)'; mctx.lineWidth = 1.5; mctx.setLineDash([3, 3]);
+      mctx.beginPath(); pts.forEach((p, i) => i ? mctx.lineTo(X(p.n), Y(p.e)) : mctx.moveTo(X(p.n), Y(p.e))); mctx.stroke();
+      mctx.setLineDash([]);
     }
+  }
 
-    // AP dot
-    hCtx.beginPath(); hCtx.arc(cx,cy,7,0,Math.PI*2);
-    hCtx.fillStyle = '#fff'; hCtx.fill();
-    hCtx.strokeStyle = '#00b894'; hCtx.lineWidth = 2.5; hCtx.stroke();
+  // access points
+  if (S.show.aps || S.show.truth) {
+    for (const ap of S.model.aps) {
+      if (S.show.truth && ap.true_floor === S.floor) {
+        if (S.show.aps && ap.floor_est === S.floor) {
+          mctx.strokeStyle = css('--text3'); mctx.lineWidth = 1; mctx.beginPath();
+          mctx.moveTo(X(ap.nls_joint_n), Y(ap.nls_joint_e)); mctx.lineTo(X(ap.true_n), Y(ap.true_e)); mctx.stroke();
+        }
+        mctx.strokeStyle = css('--text'); mctx.lineWidth = 2;
+        const x = X(ap.true_n), y = Y(ap.true_e);
+        mctx.beginPath(); mctx.moveTo(x - 4, y - 4); mctx.lineTo(x + 4, y + 4); mctx.moveTo(x + 4, y - 4); mctx.lineTo(x - 4, y + 4); mctx.stroke();
+      }
+      if (S.show.aps && ap.floor_est === S.floor) {
+        const x = X(ap.nls_joint_n), y = Y(ap.nls_joint_e);
+        mctx.beginPath(); mctx.arc(x, y, 6, 0, Math.PI * 2);
+        mctx.fillStyle = '#fff'; mctx.fill(); mctx.strokeStyle = css('--pink'); mctx.lineWidth = 2.5; mctx.stroke();
+        mctx.fillStyle = css('--text'); mctx.font = 'bold 9px "DM Sans"'; mctx.textAlign = 'center';
+        mctx.fillText('AP' + ap.ap_id, x, y - 9);
+      }
+    }
+  }
 
-    // Label
-    hCtx.fillStyle = isDark ? '#f0e6f6' : '#2d2235';
-    hCtx.font = 'bold 9px "DM Sans"';
-    hCtx.textAlign = 'center';
-    hCtx.fillText(ap.name.split('(')[0].trim(), cx, cy - 12);
+  // robot
+  if (S.robot && S.robot.floor === S.floor) {
+    const x = X(S.robot.n), y = Y(S.robot.e), a = -((S.robot.heading || 0) * Math.PI / 180);
+    mctx.beginPath(); mctx.arc(x, y, 16 + Math.sin(Date.now() / 300) * 3, 0, Math.PI * 2);
+    mctx.strokeStyle = 'rgba(232,67,147,.35)'; mctx.lineWidth = 2; mctx.stroke();
+    mctx.save(); mctx.translate(x, y); mctx.rotate(a);
+    mctx.beginPath(); mctx.moveTo(11, 0); mctx.lineTo(-7, -7); mctx.lineTo(-7, 7); mctx.closePath();
+    mctx.fillStyle = css('--pink'); mctx.fill(); mctx.strokeStyle = '#fff'; mctx.lineWidth = 1.5; mctx.stroke();
+    mctx.restore();
+  }
+}
+function roundRect(x, y, w, h, r) {
+  mctx.beginPath(); mctx.moveTo(x + r, y); mctx.arcTo(x + w, y, x + w, y + h, r); mctx.arcTo(x + w, y + h, x, y + h, r);
+  mctx.arcTo(x, y + h, x, y, r); mctx.arcTo(x, y, x + w, y, r); mctx.closePath();
+}
+
+function renderLegend() {
+  const L = $('mapLegend');
+  const apL = `<span class="legend-item"><span class="sw" style="border:2.5px solid var(--pink);border-radius:50%;background:#fff"></span>AP (estimated)</span>`
+    + (S.show.truth ? `<span class="legend-item">✕ AP (ground truth)</span>` : '')
+    + `<span class="legend-item"><span class="sw" style="background:var(--pink);clip-path:polygon(0 0,100% 50%,0 100%)"></span>Robot</span>`;
+  let body;
+  if (S.layer === 'signal') body = `<span>-80</span><span class="ramp" style="background:linear-gradient(90deg,${[-80, -67, -55, -45, -30, -20].map(signalColor).join(',')})"></span><span>-20 dBm</span>`;
+  else if (S.layer === 'contention') body = `<span>0</span><span class="ramp" style="background:linear-gradient(90deg,${[0, .5, 1].map(seqColor).join(',')})"></span><span>18+ competing APs</span>`;
+  else if (S.layer === 'variability') body = `<span>0</span><span class="ramp" style="background:linear-gradient(90deg,${[0, .5, 1].map(seqColor).join(',')})"></span><span>8+ dB spatial std</span>`;
+  else body = Object.entries(ACTION_COLORS).map(([k, c]) => `<span class="legend-item"><span class="sw" style="background:${c}"></span>${k}</span>`).join('');
+  L.innerHTML = body + `<span style="margin-left:auto;display:flex;gap:.9rem">${apL}</span>`;
+}
+
+map.addEventListener('mousemove', (e) => {
+  if (!view) return;
+  const r = map.getBoundingClientRect(), mx = e.clientX - r.left, my = e.clientY - r.top;
+  const tip = $('mapTip');
+  // AP hit test first
+  const ap = S.show.aps && S.model.aps.find((a) => a.floor_est === S.floor && Math.hypot(view.X(a.nls_joint_n) - mx, view.Y(a.nls_joint_e) - my) < 9);
+  let html = '';
+  if (ap) {
+    html = `<b>AP ${ap.ap_id}</b> · ${esc(ap.mac)} · ${esc(ap.band)}<br>Est. position: (${ap.nls_joint_e.toFixed(1)} E, ${ap.nls_joint_n.toFixed(1)} N), floor ${ap.floor_est}<br>
+      Tx ref A: ${ap.nls_joint_A.toFixed(1)} dBm · path-loss exp: ${ap.nls_joint_exponent.toFixed(2)}<br>Localisation error: ${ap.nls_joint_err_2d_m.toFixed(1)} m · ${ap.n_detections} detections`;
+  } else {
+    const half = CELL_M * view.s / 2;
+    const c = S.cells.find((c) => c.floor === S.floor && Math.abs(view.X(c.n) - mx) <= half && Math.abs(view.Y(c.e) - my) <= half);
+    if (c) {
+      html = `<b>Cell (${(+c.e).toFixed(1)} E, ${(+c.n).toFixed(1)} N)</b> · floor ${c.floor}<br>
+        Best AP: ${c.rssi_best_mean.toFixed(1)} dBm · all APs avg ${c.rssi_all_mean.toFixed(1)} dBm<br>
+        Visible APs: ${(+c.n_aps_visible).toFixed(1)} · best–2nd gap: ${c.best_second_gap != null ? c.best_second_gap.toFixed(1) + ' dB' : '–'}<br>
+        Contention: ${(+c.contention).toFixed(1)}${c.contention_projected_1_6_11 != null ? ` (→ ${c.contention_projected_1_6_11.toFixed(1)} on ch 1/6/11)` : ''}<br>
+        Spatial std: ${c.rssi_spatial_std != null ? c.rssi_spatial_std.toFixed(1) + ' dB' : '–'} · ${c.n_samples} scan point${c.n_samples === 1 ? '' : 's'}<br>
+        Cluster: ${esc(c.cluster_name || '–')}<br>Action: <b>${esc(c.action || '–')}</b>`;
+    }
+  }
+  if (!html) { tip.classList.remove('visible'); return; }
+  tip.innerHTML = html;
+  const left = mx + 16 + 280 > r.width ? mx - 290 : mx + 16;
+  tip.style.left = Math.max(0, left) + 'px'; tip.style.top = Math.max(0, my - 10) + 'px';
+  tip.classList.add('visible');
+});
+map.addEventListener('mouseleave', () => $('mapTip').classList.remove('visible'));
+
+// ======================================================
+//  STATS / AP TABLE / SUMMARY
+// ======================================================
+function renderStats() {
+  const cells = S.cells.filter((c) => c.floor === S.floor);
+  const all = S.cells;
+  const avg = mean(cells.map((c) => c.rssi_best_mean));
+  $('sAvg').textContent = Number.isFinite(avg) ? avg.toFixed(1) : '–';
+  $('sAvgSub').textContent = `floor ${S.floor}` + (Number.isFinite(avg) ? ` · ${avg >= -50 ? 'excellent' : avg >= -60 ? 'good' : avg >= WEAK_DBM ? 'fair' : 'weak'}` : '');
+  $('sCells').textContent = cells.length;
+  $('sCellsSub').textContent = `${all.length} across all floors`;
+  const apsHere = S.model.aps.filter((a) => a.floor_est === S.floor).length;
+  $('sAps').textContent = apsHere;
+  $('sApsSub').textContent = `${S.model.aps.length} localised in building`;
+  const cont = mean(cells.map((c) => +c.contention));
+  $('sCont').textContent = Number.isFinite(cont) ? cont.toFixed(1) : '–';
+  const flagged = cells.filter((c) => c.action && c.action !== 'no action').length;
+  $('sFlag').textContent = flagged;
+  $('sFlagSub').textContent = cells.length ? `${Math.round(flagged / cells.length * 100)}% of floor ${S.floor}` : '';
+  const hy = S.model.benchmark.find((b) => b.strategy === 'c_spatial_block' && b.model.includes('hybrid'));
+  $('sRmse').textContent = hy ? hy.mean.toFixed(2) : '–';
+}
+
+function renderApTable() {
+  const aps = [...S.model.aps].sort((a, b) => a.floor_est - b.floor_est || a.ap_id - b.ap_id);
+  $('apBadge').textContent = `${aps.length} APs · ${Math.round(aps.filter((a) => a.floor_correct).length / aps.length * 100)}% floor correct`;
+  $('apTable').innerHTML = `<table><thead><tr><th>AP</th><th>MAC</th><th class="num">Floor</th><th class="num">E, N (m)</th><th class="num">Exp.</th><th class="num">Error</th><th class="num">Hits</th></tr></thead><tbody>` +
+    aps.map((a) => {
+      const err = a.nls_joint_err_2d_m, cls = err < 3 ? 'good' : err < 8 ? 'warn' : 'bad';
+      return `<tr style="${a.floor_est === S.floor ? '' : 'opacity:.55'}"><td><b>AP${a.ap_id}</b></td><td style="font-family:var(--mono);font-size:.72rem">${esc(a.mac)}</td>
+        <td class="num">${a.floor_est}${a.floor_correct ? '' : ' ⚠'}</td><td class="num">${a.nls_joint_e.toFixed(1)}, ${a.nls_joint_n.toFixed(1)}</td>
+        <td class="num">${a.nls_joint_exponent.toFixed(2)}</td><td class="num"><span class="tag ${cls}">${err.toFixed(1)} m</span></td><td class="num">${a.n_detections}</td></tr>`;
+    }).join('') + '</tbody></table>';
+}
+
+function renderSummary() {
+  const cells = S.cells.filter((c) => c.floor === S.floor);
+  const srcName = { baseline: 'recorded survey', live: 'live robot session', replay: 'survey replay' }[S.source];
+  if (!cells.length) {
+    $('summary').innerHTML = `<div class="sblock"><h4>Floor ${S.floor}</h4><p>No ${srcName} data on this floor yet.</p></div>`;
+    return;
+  }
+  const best = cells.map((c) => c.rssi_best_mean);
+  const avg = mean(best), mn = Math.min(...best), mx = Math.max(...best);
+  const weak = cells.filter((c) => c.rssi_best_mean < WEAK_DBM);
+  const rough = cells.filter((c) => (c.action || '').startsWith('small-scale'));
+  const cont = cells.map((c) => +c.contention);
+  const hiCont = cells.filter((c) => c.contention >= 10);
+  const proj = cells.filter((c) => c.contention_projected_1_6_11 != null);
+  const apsHere = S.model.aps.filter((a) => a.floor_est === S.floor);
+  const cov = S.model.coverage_vs_ap, full = cov.find((r) => r.coverage_pct >= 99.9), k90 = cov.find((r) => r.coverage_pct >= 90);
+  const bench = S.model.benchmark.filter((b) => b.strategy === 'c_spatial_block').sort((a, b) => a.mean - b.mean);
+  const naive = bench.find((b) => b.model.includes('naive'));
+
+  const recs = [];
+  if (weak.length) recs.push(`<span class="bad">${weak.length}</span> cell(s) below ${WEAK_DBM} dBm — add or relocate an AP near (${weak.map((c) => `${(+c.e).toFixed(0)} E, ${(+c.n).toFixed(0)} N`).slice(0, 3).join('; ')}).`);
+  else recs.push(`<span class="good">No coverage gaps</span>: every mapped cell has a best AP stronger than ${WEAK_DBM} dBm.`);
+  if (rough.length) recs.push(`<span class="hl">${rough.length}</span> cell(s) show small-scale fading (high spatial std). This is a siting / multipath issue — reorient or lift the nearest AP rather than adding new ones.`);
+  if (hiCont.length) recs.push(`<span class="warn">${hiCont.length}</span> cell(s) hear 10+ competing APs. ${proj.length ? `Moving 2.4 GHz APs to channels 1/6/11 would cut contention from ${mean(cont).toFixed(1)} to ${mean(proj.map((c) => c.contention_projected_1_6_11)).toFixed(1)} on average.` : 'Plan non-overlapping channels (1/6/11) to reduce airtime contention.'}`);
+  if (full) recs.push(`Greedy selection shows <span class="hl">${full.k}</span> APs already give 100% coverage (${k90.k} for 90%) — the building has <span class="warn">${S.model.aps.length - full.k}</span> redundant APs that could be disabled or re-channelled.`);
+
+  $('summary').innerHTML = `
+    <div class="sblock"><h4>Signal quality · floor ${S.floor}</h4>
+      <p>From the ${srcName}: average best-AP signal is <span class="${avg >= -60 ? 'good' : avg >= WEAK_DBM ? 'warn' : 'bad'}">${avg.toFixed(1)} dBm</span>, ranging
+      <span class="hl">${mx.toFixed(0)}</span> to <span class="hl">${mn.toFixed(0)} dBm</span> over ${cells.length} cells.</p>
+      <ul><li>${cells.filter((c) => c.rssi_best_mean >= -50).length} excellent (≥ −50 dBm)</li>
+      <li>${cells.filter((c) => c.rssi_best_mean < -50 && c.rssi_best_mean >= -60).length} good (−50 to −60)</li>
+      <li>${cells.filter((c) => c.rssi_best_mean < -60 && c.rssi_best_mean >= WEAK_DBM).length} fair (−60 to ${WEAK_DBM})</li>
+      <li>${weak.length} weak (&lt; ${WEAK_DBM})</li></ul></div>
+    <div class="sblock"><h4>Interference &amp; access points</h4>
+      <p><span class="hl">${apsHere.length}</span> APs localised on this floor. Each cell hears on average <span class="hl">${mean(cells.map((c) => +c.n_aps_visible)).toFixed(1)}</span> APs, with
+      a contention of <span class="${mean(cont) > 8 ? 'warn' : 'good'}">${mean(cont).toFixed(1)}</span>.
+      Median AP localisation error is <span class="hl">${median(S.model.aps.map((a) => a.nls_joint_err_2d_m)).toFixed(1)} m</span>
+      (vs ${median(S.model.aps.map((a) => a.centre_err_2d_m)).toFixed(1)} m for a naive centre guess).</p></div>
+    <div class="sblock"><h4>Prediction model</h4>
+      <p>Best model under spatial-block cross-validation is <span class="good">${esc(bench[0].model.replace(/^\d\.\s*/, ''))}</span> at
+      <span class="hl">${bench[0].mean.toFixed(2)} dB</span> RMSE — ${naive ? `${(100 - bench[0].mean / naive.mean * 100).toFixed(0)}% better than predicting the mean (${naive.mean.toFixed(1)} dB)` : ''}.
+      Distance and AP location dominate the residual correction.</p></div>
+    <div class="sblock"><h4>Recommendations</h4><ul>${recs.map((r) => `<li>${r}</li>`).join('')}</ul></div>`;
+  $('summaryTime').textContent = 'Updated ' + new Date().toLocaleTimeString();
+}
+function median(a) { const s = [...a].sort((x, y) => x - y); return s.length ? s[Math.floor(s.length / 2)] : NaN; }
+
+// ======================================================
+//  CHARTS
+// ======================================================
+const charts = {};
+function chartDefaults() {
+  Chart.defaults.font.family = '"DM Sans",system-ui'; Chart.defaults.font.size = 11;
+  Chart.defaults.color = css('--text2'); Chart.defaults.borderColor = css('--border');
+}
+function makeChart(id, cfg) {
+  if (charts[id]) charts[id].destroy();
+  const o = cfg.options || {};
+  cfg.options = { responsive: true, maintainAspectRatio: false, animation: false, ...o, plugins: { legend: { display: false }, ...o.plugins } };
+  charts[id] = new Chart($(id), cfg);
+}
+
+function renderStaticCharts() {
+  chartDefaults();
+  const B = S.model.benchmark;
+  const models = [...new Set(B.map((b) => b.model))];
+  const strategies = [['a_random_point', 'Random points'], ['b_groupkfold_by_ap', 'Unseen APs'], ['c_spatial_block', 'Unseen areas']];
+  const palette = ['#b8a5c2', '#fd79a8', '#2e86de', '#e09100', '#00b894'];
+  makeChart('benchChart', {
+    type: 'bar',
+    data: { labels: strategies.map((s) => s[1]), datasets: models.map((m, i) => ({
+      label: m.replace(/^\d\.\s*/, ''), backgroundColor: palette[i], borderRadius: 4,
+      data: strategies.map(([s]) => B.find((b) => b.strategy === s && b.model === m)?.mean),
+    })) },
+    options: { plugins: { legend: { display: true, position: 'bottom', labels: { boxWidth: 10 } } }, scales: { y: { title: { display: true, text: 'RMSE (dB)' }, beginAtZero: true } } },
   });
 
-  updateLegend();
+  const cov = S.model.coverage_vs_ap;
+  const k100 = cov.find((r) => r.coverage_pct >= 99.9);
+  $('covBadge').textContent = k100 ? `${k100.k} APs → 100%` : '';
+  makeChart('covChart', {
+    type: 'line',
+    data: { labels: cov.map((r) => r.k), datasets: [{ data: cov.map((r) => r.coverage_pct), borderColor: css('--pink'), backgroundColor: 'rgba(232,67,147,.12)', fill: true, tension: .25, pointRadius: 3 }] },
+    options: { plugins: { tooltip: { callbacks: { label: (c) => `${c.parsed.y.toFixed(1)}% covered (adds AP${cov[c.dataIndex].ap_added})` } } },
+      scales: { x: { title: { display: true, text: 'APs kept' } }, y: { min: 0, max: 100, title: { display: true, text: 'Scan points covered (%)' } } } },
+  });
+
+  const fi = [...S.model.feature_importance].sort((a, b) => b.importance - a.importance);
+  makeChart('featChart', {
+    type: 'bar',
+    data: { labels: fi.map((f) => f.feature), datasets: [{ data: fi.map((f) => f.importance * 100), backgroundColor: css('--pink'), borderRadius: 4 }] },
+    options: { indexAxis: 'y', scales: { x: { title: { display: true, text: 'Importance (%)' } } } },
+  });
+
+  const rh = S.model.residual_hist;
+  makeChart('residChart', {
+    type: 'bar',
+    data: { labels: rh.map((r) => r.bin), datasets: [{ data: rh.map((r) => r.count), backgroundColor: rh.map((r) => Math.abs(r.bin + 2) <= 8 ? '#00b894' : '#fab1c4'), borderRadius: 3, barPercentage: 1, categoryPercentage: .95 }] },
+    options: { scales: { x: { title: { display: true, text: 'Residual (dB)' } }, y: { title: { display: true, text: 'Readings' } } } },
+  });
 }
 
-function updateLegend() {
-  const el = document.getElementById('heatmapLegend');
-  el.innerHTML = heatmapMode === 'signal'
-    ? `<div class="legend-item"><div class="legend-color" style="background:rgb(40,180,220)"></div> Strong</div>
-       <div class="legend-item"><div class="legend-color" style="background:rgb(60,210,80)"></div> Good</div>
-       <div class="legend-item"><div class="legend-color" style="background:rgb(220,220,60)"></div> Fair</div>
-       <div class="legend-item"><div class="legend-color" style="background:rgb(200,60,80)"></div> Weak</div>
-       <div class="legend-item" style="margin-left:auto;color:var(--pink);font-weight:600;">Drag dots to move routers</div>`
-    : `<div class="legend-item"><div class="legend-color" style="background:rgba(60,40,100,0.4)"></div> Low</div>
-       <div class="legend-item"><div class="legend-color" style="background:rgba(150,55,130,0.6)"></div> Medium</div>
-       <div class="legend-item"><div class="legend-color" style="background:rgba(232,67,147,0.9)"></div> High</div>`;
-}
-
-function setHeatmapMode(mode, btn) {
-  heatmapMode = mode;
-  document.querySelectorAll('#btnSignal,#btnUncertainty').forEach(b => b.classList.remove('active'));
-  btn.classList.add('active');
-}
-
-// ======================================================
-//  ROBOT
-// ======================================================
-const robotCanvas = document.getElementById('robotCanvas');
-const rCtx = robotCanvas.getContext('2d');
-const waypoints = [
-  {x:3,y:3},{x:12,y:3},{x:12,y:10},{x:3,y:10},{x:3,y:17},
-  {x:12,y:17},{x:12,y:25},{x:3,y:25},{x:3,y:35},{x:12,y:35},
-  {x:18,y:35},{x:18,y:25},{x:25,y:25},{x:25,y:17},{x:18,y:17},
-  {x:18,y:5},{x:25,y:5},{x:25,y:10},{x:33,y:10},{x:33,y:5},
-  {x:42,y:5},{x:42,y:14},{x:33,y:14},{x:33,y:25},{x:42,y:25},
-  {x:42,y:35},{x:33,y:35},{x:48,y:35},{x:48,y:20},{x:55,y:20},
-  {x:55,y:5},{x:48,y:5},{x:48,y:14},{x:55,y:14},{x:55,y:35},{x:48,y:35}
-];
-let robotPos={x:waypoints[0].x,y:waypoints[0].y}, waypointIdx=0, robotTrail=[], robotRunning=true, robotAngle=0;
-
-function moveRobot() {
-  if (!robotRunning) return;
-  const t = waypoints[(waypointIdx+1)%waypoints.length];
-  const dx=t.x-robotPos.x, dy=t.y-robotPos.y, d=Math.sqrt(dx*dx+dy*dy);
-  if (d<0.25) waypointIdx=(waypointIdx+1)%waypoints.length;
-  else { robotPos.x+=dx/d*0.25; robotPos.y+=dy/d*0.25; robotAngle=Math.atan2(dy,dx); }
-  robotTrail.push({x:robotPos.x,y:robotPos.y});
-  if (robotTrail.length>500) robotTrail.shift();
-}
-
-function drawRobotMap() {
-  const cw=robotCanvas.width,ch=robotCanvas.height,cellW=cw/GRID_W,cellH=ch/GRID_H;
-  const isDark = document.documentElement.getAttribute('data-theme')==='dark';
-  rCtx.fillStyle = isDark?'#1a1020':'#fef6f9';
-  rCtx.fillRect(0,0,cw,ch);
-
-  rCtx.strokeStyle = isDark?'rgba(255,255,255,0.03)':'rgba(0,0,0,0.04)';
-  rCtx.lineWidth = 0.5;
-  for (let x=0;x<=GRID_W;x++){rCtx.beginPath();rCtx.moveTo(x*cellW,0);rCtx.lineTo(x*cellW,ch);rCtx.stroke();}
-  for (let y=0;y<=GRID_H;y++){rCtx.beginPath();rCtx.moveTo(0,y*cellH);rCtx.lineTo(cw,y*cellH);rCtx.stroke();}
-
-  for (const w of walls){ rCtx.fillStyle=isDark?'#3d2650':'#e0c8d8'; rCtx.fillRect(w.x*cellW,w.y*cellH,w.w*cellW,w.h*cellH); }
-
-  for (const ap of aps) {
-    rCtx.beginPath(); rCtx.arc(ap.x*cellW,ap.y*cellH,50,0,Math.PI*2);
-    rCtx.fillStyle='rgba(0,184,148,0.06)'; rCtx.fill();
-    rCtx.beginPath(); rCtx.arc(ap.x*cellW,ap.y*cellH,5,0,Math.PI*2);
-    rCtx.fillStyle='#00b894'; rCtx.fill();
+function renderSignalChart() {
+  const pts = currentPoints();
+  const recent = S.source === 'baseline' ? [] : pts.slice(-150);
+  if (!charts.signalChart) {
+    makeChart('signalChart', {
+      type: 'line',
+      data: { labels: [], datasets: [{ data: [], borderColor: css('--pink'), backgroundColor: 'rgba(232,67,147,.12)', fill: true, tension: .3, pointRadius: 0, borderWidth: 2 }] },
+      options: { scales: { y: { suggestedMin: -80, suggestedMax: -20, title: { display: true, text: 'Best RSSI (dBm)' } }, x: { ticks: { maxTicksLimit: 8 } } },
+        plugins: { tooltip: { callbacks: { title: (c) => { const p = recent[c[0].dataIndex]; return p ? `Floor ${p.floor} · (${p.e} E, ${p.n} N)` : ''; } } } } },
+    });
   }
+  const ch = charts.signalChart;
+  ch.data.labels = recent.map((p, i) => (S.source === 'live' && p.t) ? new Date(p.t).toLocaleTimeString() : '#' + (pts.length - recent.length + i + 1));
+  ch.data.datasets[0].data = recent.map((p) => p.best);
+  ch.options.plugins.tooltip.callbacks.title = (c) => { const p = recent[c[0].dataIndex]; return p ? `Floor ${p.floor} · (${p.e} E, ${p.n} N)` : ''; };
+  ch.update('none');
+}
 
-  if (robotTrail.length>1) for (let i=1;i<robotTrail.length;i++){
-    rCtx.beginPath();
-    rCtx.moveTo(robotTrail[i-1].x*cellW,robotTrail[i-1].y*cellH);
-    rCtx.lineTo(robotTrail[i].x*cellW,robotTrail[i].y*cellH);
-    rCtx.strokeStyle=`rgba(232,67,147,${(i/robotTrail.length)*0.5})`;
-    rCtx.lineWidth=2; rCtx.stroke();
+function pushFeed(rows) {
+  const feed = $('feed');
+  if (feed.firstElementChild && feed.firstElementChild.classList.contains('t') && feed.children.length === 1) feed.innerHTML = '';
+  const byPoint = new Map();
+  for (const r of rows) {
+    const k = `${r.floor}|${r.e}|${r.n}`;
+    const p = byPoint.get(k) || { ...r, count: 0, best: -200, bestMac: '' };
+    p.count++; if (r.rssi > p.best) { p.best = r.rssi; p.bestMac = r.ssid || r.mac; }
+    byPoint.set(k, p);
   }
-
-  const rx=robotPos.x*cellW, ry=robotPos.y*cellH;
-  rCtx.save(); rCtx.translate(rx,ry); rCtx.rotate(robotAngle);
-  rCtx.beginPath(); rCtx.moveTo(10,0); rCtx.lineTo(-6,-7); rCtx.lineTo(-6,7); rCtx.closePath();
-  rCtx.fillStyle='#e84393'; rCtx.fill();
-  rCtx.strokeStyle='#fd79a8'; rCtx.lineWidth=1.5; rCtx.stroke();
-  rCtx.restore();
-
-  rCtx.beginPath(); rCtx.arc(rx,ry,18+Math.sin(Date.now()/300)*4,0,Math.PI*2);
-  rCtx.strokeStyle='rgba(232,67,147,0.25)'; rCtx.lineWidth=1; rCtx.stroke();
-}
-
-function toggleRobot() {
-  robotRunning=!robotRunning;
-  document.getElementById('btnPlay').textContent = robotRunning?'Pause':'Play';
-  document.getElementById('btnPlay').classList.toggle('active', robotRunning);
-}
-function resetRobot() { robotTrail=[]; waypointIdx=0; robotPos={x:waypoints[0].x,y:waypoints[0].y}; }
-
-// ======================================================
-//  SIGNAL CHART
-// ======================================================
-const signalCanvas=document.getElementById('signalChart'), sCtx=signalCanvas.getContext('2d');
-const chartTooltip=document.getElementById('chartTooltip');
-let signalHistory=[];
-const MAX_HISTORY = 120;
-
-function updateSignalHistory() {
-  const gx=Math.round(robotPos.x), gy=Math.round(robotPos.y);
-  let val = signalGrid[Math.max(0,Math.min(GRID_H-1,gy))]?.[Math.max(0,Math.min(GRID_W-1,gx))];
-  if (val===null||val===undefined) val=-80;
-  signalHistory.push(val+(Math.random()-0.5)*4);
-  if (signalHistory.length>MAX_HISTORY) signalHistory.shift();
-}
-
-function drawSignalChart() {
-  const cw=signalCanvas.width,ch=signalCanvas.height;
-  const pad={t:20,r:20,b:25,l:48}, pw=cw-pad.l-pad.r, ph=ch-pad.t-pad.b;
-  const isDark = document.documentElement.getAttribute('data-theme')==='dark';
-
-  sCtx.fillStyle = isDark?'#1a1020':'#fef6f9';
-  sCtx.fillRect(0,0,cw,ch);
-
-  sCtx.fillStyle = isDark?'#6b5a78':'#b8a5c2';
-  sCtx.font = '11px "DM Sans",system-ui';
-  sCtx.textAlign = 'right';
-  for (const v of [-20,-40,-60,-80,-95]){
-    const y=pad.t+((-20-v)/75)*ph;
-    sCtx.fillText(v+'',pad.l-8,y+4);
-    sCtx.strokeStyle=isDark?'rgba(255,255,255,0.05)':'rgba(0,0,0,0.06)';
-    sCtx.beginPath();sCtx.moveTo(pad.l,y);sCtx.lineTo(cw-pad.r,y);sCtx.stroke();
+  for (const p of byPoint.values()) {
+    const div = document.createElement('div');
+    const t = p.created_at || p.t ? new Date(p.created_at || p.t).toLocaleTimeString() : '';
+    div.innerHTML = `<span class="t">${t}</span> F${p.floor} (${(+p.e).toFixed(1)}, ${(+p.n).toFixed(1)}) · ${p.count} APs · best <b style="color:${signalColor(p.best)}">${p.best.toFixed(0)} dBm</b> ${esc(p.bestMac)}`;
+    feed.prepend(div);
   }
-
-  const goodY=pad.t+(30/75)*ph, fairY=pad.t+(50/75)*ph;
-  sCtx.fillStyle='rgba(0,184,148,0.06)'; sCtx.fillRect(pad.l,pad.t,pw,goodY-pad.t);
-  sCtx.fillStyle='rgba(253,203,110,0.06)'; sCtx.fillRect(pad.l,goodY,pw,fairY-goodY);
-  sCtx.fillStyle='rgba(225,112,85,0.06)'; sCtx.fillRect(pad.l,fairY,pw,ph-(fairY-pad.t));
-
-  sCtx.font='10px "DM Sans"'; sCtx.textAlign='left';
-  sCtx.fillStyle='rgba(0,184,148,0.5)'; sCtx.fillText('Strong',pad.l+4,pad.t+14);
-  sCtx.fillStyle='rgba(224,145,0,0.5)'; sCtx.fillText('Fair',pad.l+4,goodY+14);
-  sCtx.fillStyle='rgba(225,112,85,0.5)'; sCtx.fillText('Weak',pad.l+4,fairY+14);
-
-  if (signalHistory.length<2) return;
-  sCtx.beginPath();
-  for (let i=0;i<signalHistory.length;i++){
-    const x=pad.l+(i/(MAX_HISTORY-1))*pw, y=pad.t+((-20-signalHistory[i])/75)*ph;
-    i===0?sCtx.moveTo(x,y):sCtx.lineTo(x,y);
-  }
-  sCtx.strokeStyle='#e84393'; sCtx.lineWidth=2; sCtx.stroke();
-
-  const grad=sCtx.createLinearGradient(0,pad.t,0,pad.t+ph);
-  grad.addColorStop(0,'rgba(232,67,147,0.18)'); grad.addColorStop(1,'rgba(232,67,147,0)');
-  sCtx.lineTo(pad.l+((signalHistory.length-1)/(MAX_HISTORY-1))*pw,pad.t+ph);
-  sCtx.lineTo(pad.l,pad.t+ph); sCtx.closePath();
-  sCtx.fillStyle=grad; sCtx.fill();
-
-  const lx=pad.l+((signalHistory.length-1)/(MAX_HISTORY-1))*pw;
-  const ly=pad.t+((-20-signalHistory[signalHistory.length-1])/75)*ph;
-  sCtx.beginPath(); sCtx.arc(lx,ly,4,0,Math.PI*2);
-  sCtx.fillStyle='#fd79a8'; sCtx.fill();
-}
-
-signalCanvas.addEventListener('mousemove',(e)=>{
-  const rect=signalCanvas.getBoundingClientRect();
-  const mx=(e.clientX-rect.left)*(signalCanvas.width/rect.width);
-  const pad={l:48,r:20}, pw=signalCanvas.width-pad.l-pad.r;
-  const idx=Math.round(((mx-pad.l)/pw)*(signalHistory.length-1));
-  if(idx<0||idx>=signalHistory.length){chartTooltip.classList.remove('visible');return;}
-  chartTooltip.innerHTML=`<strong>${signalHistory[idx].toFixed(1)} dBm</strong><br>Sample ${idx+1}`;
-  chartTooltip.style.left=(e.clientX-rect.left+10)+'px';
-  chartTooltip.style.top='20px';
-  chartTooltip.classList.add('visible');
-});
-signalCanvas.addEventListener('mouseleave',()=>chartTooltip.classList.remove('visible'));
-
-// ======================================================
-//  ZONE TABLE
-// ======================================================
-function updateZoneTable() {
-  const zones = [
-    {name:'Main Lobby',signal:-35,status:'strong',coverage:'95%'},
-    {name:'East Corridor',signal:-58,status:'good',coverage:'82%'},
-    {name:'West Wing',signal:-72,status:'fair',coverage:'68%'},
-    {name:'Server Room',signal:-28,status:'strong',coverage:'99%'},
-    {name:'Lab Section',signal:-65,status:'fair',coverage:'74%'},
-    {name:'Storage Area',signal:-88,status:'weak',coverage:'42%'},
-  ];
-  const colors={strong:'#00b894',good:'#e84393',fair:'#e09100',weak:'#e17055'};
-  let html=`<table class="zone-table"><thead><tr><th>Zone</th><th>Signal</th><th>Status</th><th>Coverage</th><th>Trend</th></tr></thead><tbody>`;
-  for (const z of zones){
-    const bw=Math.max(5,(z.signal+100)*1.2);
-    html+=`<tr><td style="font-weight:600;">${z.name}</td>
-      <td><div class="signal-bar-bg"><div class="signal-bar-fill" style="width:${bw}%;background:${colors[z.status]};"></div></div>
-      <div style="font-size:0.7rem;color:var(--text3);margin-top:2px;">${z.signal} dBm</div></td>
-      <td><span class="status-pill status-${z.status}">${z.status}</span></td>
-      <td>${z.coverage}</td>
-      <td>${z.signal>-50?'↗':z.signal>-70?'→':'↘'}</td></tr>`;
-  }
-  html+='</tbody></table>';
-  document.getElementById('zoneTable').innerHTML=html;
-}
-updateZoneTable();
-
-// ======================================================
-//  STATS & LOOP
-// ======================================================
-let frameCount=0;
-function updateStats(){
-  frameCount++;
-  document.getElementById('dataPointCount').textContent=robotTrail.length;
-  if(signalHistory.length>0){
-    const avg=signalHistory.reduce((a,b)=>a+b,0)/signalHistory.length;
-    document.getElementById('avgSignal').textContent=avg.toFixed(0);
-  }
-  document.getElementById('coverage').textContent=Math.min(99,45+Math.floor(robotTrail.length/8))+'%';
-  document.getElementById('robotSpeed').textContent=(0.3+Math.random()*0.2).toFixed(1);
-  const s=Math.floor(frameCount/30);
-  document.getElementById('lastScan').textContent=s<60?s+'s ago':Math.floor(s/60)+'m ago';
-}
-
-function animate(){
-  moveRobot(); updateSignalHistory();
-  drawHeatmap(); drawRobotMap(); drawSignalChart(); updateStats();
-  requestAnimationFrame(animate);
+  while (feed.children.length > 60) feed.lastChild.remove();
 }
 
 // ======================================================
-//  SUMMARY & INSIGHTS — reads from signalGrid, uncertaintyGrid, aps
-//  Works with any data source: swap the grids and call updateSummary()
+//  CONTROLS & MAIN LOOP
 // ======================================================
-let lastSummaryTime = Date.now();
-
-function updateSummary() {
-  lastSummaryTime = Date.now();
-  let totalCells = 0, coveredCells = 0;
-  let sum = 0, count = 0, min = 0, max = -100;
-  let strongCount = 0, goodCount = 0, fairCount = 0, weakCount = 0;
-  let highUncCount = 0, totalUnc = 0, uncCount = 0;
-  const weakClusters = [];
-
-  for (let y = 0; y < GRID_H; y++) for (let x = 0; x < GRID_W; x++) {
-    if (isWall(x, y)) continue;
-    totalCells++;
-    const sig = signalGrid[y]?.[x];
-    const unc = uncertaintyGrid[y]?.[x];
-    if (sig === null || sig === undefined) continue;
-    coveredCells++;
-    sum += sig; count++;
-    if (sig > max) max = sig;
-    if (sig < min) min = sig;
-    if (sig >= -50) strongCount++;
-    else if (sig >= -65) goodCount++;
-    else if (sig >= -80) fairCount++;
-    else weakCount++;
-    if (unc !== null && unc !== undefined) {
-      totalUnc += unc; uncCount++;
-      if (unc > 0.7) highUncCount++;
-    }
-  }
-
-  const avg = count ? (sum / count) : -80;
-  const coveragePct = totalCells ? ((coveredCells / totalCells) * 100) : 0;
-  const avgUnc = uncCount ? (totalUnc / uncCount) : 0;
-  const weakPct = count ? ((weakCount / count) * 100) : 0;
-  const strongPct = count ? ((strongCount / count) * 100) : 0;
-  const highUncPct = uncCount ? ((highUncCount / uncCount) * 100) : 0;
-
-  // Signal quality label
-  let qualityLabel, qualityClass;
-  if (avg >= -50) { qualityLabel = 'Excellent'; qualityClass = 'good'; }
-  else if (avg >= -65) { qualityLabel = 'Good'; qualityClass = 'good'; }
-  else if (avg >= -80) { qualityLabel = 'Fair'; qualityClass = 'warn'; }
-  else { qualityLabel = 'Poor'; qualityClass = 'bad'; }
-
-  // Recommendations
-  const recs = [];
-  if (weakPct > 30) recs.push('High percentage of weak signal areas (' + weakPct.toFixed(0) + '%). Consider adding more access points in underserved zones.');
-  if (weakPct > 10 && weakPct <= 30) recs.push('Some weak zones detected (' + weakPct.toFixed(0) + '%). Review router placement for better coverage.');
-  if (highUncPct > 25) recs.push('Uncertainty is high in ' + highUncPct.toFixed(0) + '% of cells. More data collection passes are needed in those areas.');
-  if (aps.length < 3) recs.push('Only ' + aps.length + ' access point(s) configured. Most floor plans this size need 3-5 for full coverage.');
-  if (aps.length >= 3 && strongPct > 60) recs.push('Strong signal in ' + strongPct.toFixed(0) + '% of the area. Current router placement is effective.');
-  if (avg >= -50 && weakPct < 10) recs.push('Overall signal quality is excellent with minimal dead zones. No immediate action needed.');
-  if (recs.length === 0) recs.push('Coverage looks reasonable. Continue monitoring for changes.');
-
-  // Find best and worst APs
-  let bestAP = aps[0], worstAP = aps[0];
-  for (const ap of aps) {
-    if (ap.strength > bestAP.strength) bestAP = ap;
-    if (ap.strength < worstAP.strength) worstAP = ap;
-  }
-
-  const el = document.getElementById('summaryContent');
-  el.innerHTML = `
-    <div class="summary-block">
-      <div class="summary-block-title">Overall Signal Quality</div>
-      <p>
-        Average signal strength is <span class="${qualityClass}">${avg.toFixed(1)} dBm (${qualityLabel})</span>.
-        Signal ranges from <span class="highlight">${max.toFixed(0)} dBm</span> (strongest)
-        to <span class="highlight">${min.toFixed(0)} dBm</span> (weakest) across the mapped area.
-      </p>
-      <ul>
-        <li><span class="good">${strongCount}</span> cells with strong signal (≥ -50 dBm)</li>
-        <li><span class="highlight">${goodCount}</span> cells with good signal (-50 to -65 dBm)</li>
-        <li><span class="warn">${fairCount}</span> cells with fair signal (-65 to -80 dBm)</li>
-        <li><span class="bad">${weakCount}</span> cells with weak signal (< -80 dBm)</li>
-      </ul>
-    </div>
-
-    <div class="summary-block">
-      <div class="summary-block-title">Coverage & Uncertainty</div>
-      <p>
-        <span class="highlight">${coveragePct.toFixed(0)}%</span> of the floor area has been scanned
-        (${coveredCells} of ${totalCells} cells).
-        Average prediction uncertainty is <span class="${avgUnc > 0.5 ? 'warn' : 'good'}">${(avgUnc * 100).toFixed(0)}%</span>.
-        ${highUncPct > 0 ? '<span class="' + (highUncPct > 25 ? 'bad' : 'warn') + '">' + highUncPct.toFixed(0) + '%</span> of cells have high uncertainty (>70%), suggesting the robot should revisit those areas.' : '<span class="good">No areas</span> with critically high uncertainty.'}
-      </p>
-    </div>
-
-    <div class="summary-block">
-      <div class="summary-block-title">Access Point Analysis</div>
-      <p>
-        <span class="highlight">${aps.length}</span> access point${aps.length !== 1 ? 's' : ''} configured.
-        ${aps.length > 0 ? 'Strongest AP is <span class="good">' + bestAP.name + '</span> at ' + bestAP.strength + ' dBm (' + bestAP.band + ').' : ''}
-        ${aps.length > 1 ? ' Weakest is <span class="warn">' + worstAP.name + '</span> at ' + worstAP.strength + ' dBm.' : ''}
-      </p>
-      <ul>
-        ${aps.map(ap => '<li><span class="highlight">' + ap.name + '</span> — ' + ap.strength + ' dBm, ' + ap.band + ', at (' + ap.x.toFixed(0) + ', ' + ap.y.toFixed(0) + ')</li>').join('')}
-      </ul>
-    </div>
-
-    <div class="summary-block">
-      <div class="summary-block-title">Recommendations</div>
-      <ul>
-        ${recs.map(r => '<li>' + r + '</li>').join('')}
-      </ul>
-    </div>
-  `;
-
-  document.getElementById('summaryTimestamp').textContent = 'Updated ' + new Date().toLocaleTimeString();
-  document.getElementById('weakZones').textContent = weakCount > 0 ? Math.ceil(weakCount / 20) : 0;
+function setFloor(f, keepRobot) {
+  S.floor = f;
+  document.querySelectorAll('#floorSeg .btn').forEach((b) => b.classList.toggle('active', +b.dataset.floor === f));
+  $('mapTitle').textContent = `Floor ${f} — ${({ signal: 'signal strength', contention: 'channel contention', variability: 'signal variability', action: 'recommended action' })[S.layer]}`;
+  if (!keepRobot) refresh();
 }
+function toggleOpt(k, btn) { S.show[k] = !S.show[k]; btn.classList.toggle('active', S.show[k]); renderLegend(); drawMap(); }
 
-// Auto-refresh summary every 10 seconds
-setInterval(updateSummary, 10000);
+document.querySelectorAll('#sourceSeg .btn').forEach((b) => b.addEventListener('click', () => setSource(b.dataset.src)));
+document.querySelectorAll('#layerSeg .btn').forEach((b) => b.addEventListener('click', () => {
+  S.layer = b.dataset.layer;
+  document.querySelectorAll('#layerSeg .btn').forEach((x) => x.classList.toggle('active', x === b));
+  setFloor(S.floor, true); renderLegend(); drawMap();
+}));
 
-// Also update summary when routers change
-const _origUpdateAP = updateAP;
-updateAP = function(i, field, val) { _origUpdateAP(i, field, val); updateSummary(); };
-const _origRemoveAP = removeAP;
-removeAP = function(i) { _origRemoveAP(i); updateSummary(); };
-const _origAddManual = addRouterManual;
-addRouterManual = function() { _origAddManual(); updateSummary(); };
+let summaryTimer = 0;
+function refresh() {
+  S.cells = currentCells();
+  setFloor(S.floor, true);
+  renderStats(); renderApTable(); renderLegend(); drawMap(); renderSignalChart(); renderStatus();
+  // summary text is heavier to read; throttle it during streaming
+  if (Date.now() - summaryTimer > 2000 || S.source === 'baseline') { summaryTimer = Date.now(); renderSummary(); }
+}
+function renderAll() { renderStaticCharts(); charts.signalChart && (charts.signalChart.destroy(), delete charts.signalChart); refresh(); }
 
-renderRouterPanel();
-updateSummary();
-animate();
+(function animateRobot() { if (S.robot) drawMap(); setTimeout(() => requestAnimationFrame(animateRobot), 60); })();
+window.addEventListener('resize', () => drawMap());
+
+async function init() {
+  const name = localStorage.getItem('userName');
+  if (name) $('userGreeting').textContent = 'Hi, ' + name;
+  try {
+    const res = await fetch('data/gridsense.json');
+    S.model = await res.json();
+  } catch (err) {
+    $('dataPillText').textContent = 'Failed to load model data';
+    return;
+  }
+  // building extent across all floors and AP estimates, with a small margin
+  const es = S.model.cells.map((c) => c.e).concat(S.model.aps.map((a) => a.nls_joint_e));
+  const ns = S.model.cells.map((c) => c.n).concat(S.model.aps.map((a) => a.nls_joint_n));
+  S.model.extent = { e0: Math.floor(Math.min(...es)) - 2, e1: Math.ceil(Math.max(...es)) + 2, n0: Math.floor(Math.min(...ns)) - 2, n1: Math.ceil(Math.max(...ns)) + 2 };
+  $('floorSeg').innerHTML = S.model.meta.floors.map((f) => `<button class="btn" data-floor="${f}">F${f}</button>`).join('');
+  document.querySelectorAll('#floorSeg .btn').forEach((b) => b.addEventListener('click', () => setFloor(+b.dataset.floor)));
+  renderStaticCharts();
+  setFloor(S.meta?.floors?.[0] || 1);
+  pollLive();
+  setInterval(pollLive, POLL_MS);
+}
+init();
 </script>
 </body>
 </html>
