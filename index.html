@@ -106,6 +106,17 @@
     .team-members{display:flex;justify-content:center;gap:.6rem;flex-wrap:wrap;font-size:.8rem;color:var(--text2);margin-bottom:1rem;}
     .team-members span{padding:4px 14px;background:var(--pink-ghost);border:1px solid var(--border);border-radius:20px;}
 
+    .run-grid{display:grid;grid-template-columns:3fr 2fr;gap:1.2rem;}
+    .health-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:1rem;}
+    .hbox{background:var(--pink-ghost);border:1px solid var(--border);border-radius:14px;padding:.9rem 1rem;font-size:.8rem;line-height:1.6;}
+    .hbox h4{font-size:.7rem;font-weight:700;color:var(--pink);text-transform:uppercase;letter-spacing:.05em;margin-bottom:.4rem;}
+    .sensor-row{display:flex;align-items:center;gap:.5rem;font-size:.76rem;margin:3px 0;}
+    .sensor-row .name{width:26px;font-weight:700;}
+    .bar{flex:1;height:7px;border-radius:4px;background:var(--border);overflow:hidden;}
+    .bar>i{display:block;height:100%;border-radius:4px;}
+    .warnbox{border-left:3px solid var(--red);padding:.3rem .7rem;margin:.3rem 0;font-size:.78rem;background:rgba(225,112,85,.08);border-radius:6px;}
+    .okbox{border-left:3px solid var(--green);padding:.3rem .7rem;margin:.3rem 0;font-size:.78rem;background:rgba(0,184,148,.08);border-radius:6px;}
+    @media(max-width:1100px){.health-grid{grid-template-columns:1fr 1fr;}.run-grid{grid-template-columns:1fr;}}
     @media(max-width:1100px){.stats{grid-template-columns:repeat(3,1fr);}}
     @media(max-width:900px){
       nav,.wrap{padding-left:1rem;padding-right:1rem;}
@@ -251,6 +262,36 @@
       <div class="chart-box"><canvas id="residChart"></canvas></div>
     </div>
 
+    <!-- ROBOT HEALTH (live telemetry) -->
+    <div class="card full">
+      <div class="card-header">
+        <div>
+          <div class="card-title">Robot health</div>
+          <div class="card-sub">Navigation telemetry from the live robot: state, distance sensors, wheel odometry and events</div>
+        </div>
+        <span class="badge" id="healthBadge">no telemetry</span>
+      </div>
+      <div id="health"></div>
+    </div>
+
+    <!-- EXPLORATION RUNS (offline logs) -->
+    <div class="card full">
+      <div class="card-header">
+        <div>
+          <div class="card-title">Exploration runs</div>
+          <div class="card-sub">Navigation logs exported by the robot (exploration_*.csv) — path, turns, obstacles, sensor health</div>
+        </div>
+        <div style="display:flex;gap:.6rem;align-items:center;flex-wrap:wrap">
+          <select class="btn" id="runSelect"></select>
+          <label class="btn outline" style="cursor:pointer">Upload CSV<input type="file" id="runUpload" accept=".csv" hidden></label>
+        </div>
+      </div>
+      <div class="run-grid">
+        <div><canvas class="map" id="runCanvas"></canvas><div class="legend" id="runLegend"></div></div>
+        <div id="runStats"></div>
+      </div>
+    </div>
+
     <!-- SUMMARY -->
     <div class="card full">
       <div class="card-header">
@@ -277,5 +318,6 @@
 </footer>
 
 <script src="assets/app.js"></script>
+<script src="assets/runs.js"></script>
 </body>
 </html>

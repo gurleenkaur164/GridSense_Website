@@ -169,6 +169,7 @@ async function pollLive() {
     S.live.sessions = d.sessions || [];
     if (!S.live.session && d.session) S.live.session = d.session;
     renderSessionSelect();
+    if (typeof renderHealth === 'function') renderHealth(S.live.robots, d.events);
 
     const fresh = (d.scans || []).map((s) => ({ id: +s.id, floor: +s.floor, e: +s.e, n: +s.n, mac: s.mac, ssid: s.ssid, rssi: +s.rssi, band: s.band, channel: s.channel, t: s.created_at }));
     for (const s of fresh) { S.live.samples.push(s); S.live.since = Math.max(S.live.since, s.id); }

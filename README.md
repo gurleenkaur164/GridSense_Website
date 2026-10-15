@@ -24,10 +24,34 @@ flags problem areas and shows how well our RSSI prediction models perform.
 }
 ```
 
+Optional navigation telemetry (shown in the **Robot health** card — sensor status, events, stuck detection):
+
+```json
+"telemetry": { "state": "EXPLORE", "event": "FRONT OBSTACLE", "sensors": [-1, 643, 963, -1, 1031, -1],
+               "wheel_l_cm": 120.4, "wheel_r_cm": 118.9 }
+```
+
+If the robot only knows its odometry position (x/y from where it started, as in the exploration logs),
+send it in the robot frame and the server converts it to the survey's E/N metres:
+
+```json
+"pose": { "frame": "local", "x": 4.12, "y": -1.13, "heading": -104,
+          "origin": { "floor": 1, "e": 52.0, "n": 15.0, "theta": 0 } }
+```
+
+`origin` is the robot's start point on the survey map; `theta` is the direction of the robot's +x axis in
+degrees counter-clockwise from North towards East.
+
 Send one request per scan stop (or an empty `readings` array as a heartbeat). Positions are metres in the
 same E/N frame as the survey. Tables (`scans`, `robot_status`) are created automatically in the Neon database.
 
 `GET /api/live?since=<id>&session=<id>` (logged-in user) returns robot status, sessions and new scans.
+
+## Exploration logs
+
+The **Exploration runs** card analyses the robot's `exploration_*.csv` navigation logs: path, turns,
+obstacles, spinning-in-place detection, turn accuracy, heading drift and distance-sensor health.
+Logs in `data/runs/` (listed in `data/runs/index.json`) load automatically; others can be uploaded in the browser.
 
 ## Setup
 

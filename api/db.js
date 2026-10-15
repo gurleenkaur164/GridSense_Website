@@ -57,6 +57,27 @@ function initDb() {
           updated_at TIMESTAMPTZ DEFAULT NOW()
         )
       `;
+      // Navigation telemetry from the robot's exploration loop
+      await sql`ALTER TABLE robot_status ADD COLUMN IF NOT EXISTS x_local REAL`;
+      await sql`ALTER TABLE robot_status ADD COLUMN IF NOT EXISTS y_local REAL`;
+      await sql`ALTER TABLE robot_status ADD COLUMN IF NOT EXISTS sensors JSONB`;
+      await sql`ALTER TABLE robot_status ADD COLUMN IF NOT EXISTS wheel_l_cm REAL`;
+      await sql`ALTER TABLE robot_status ADD COLUMN IF NOT EXISTS wheel_r_cm REAL`;
+      await sql`ALTER TABLE robot_status ADD COLUMN IF NOT EXISTS last_event VARCHAR(64)`;
+      await sql`
+        CREATE TABLE IF NOT EXISTS robot_events (
+          id BIGSERIAL PRIMARY KEY,
+          device_id VARCHAR(64) NOT NULL,
+          session_id VARCHAR(64),
+          event VARCHAR(64) NOT NULL,
+          floor SMALLINT,
+          e REAL,
+          n REAL,
+          heading REAL,
+          created_at TIMESTAMPTZ DEFAULT NOW()
+        )
+      `;
+      await sql`CREATE INDEX IF NOT EXISTS robot_events_session_idx ON robot_events (session_id, id)`;
     })().catch((err) => { ready = null; throw err; });
   }
   return ready;

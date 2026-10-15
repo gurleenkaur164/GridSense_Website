@@ -18,6 +18,7 @@ module.exports = async function handler(req, res) {
 
     const robots = await sql`
       SELECT device_id, session_id, floor, e, n, heading, speed, battery, state, updated_at,
+             x_local, y_local, sensors, wheel_l_cm, wheel_r_cm, last_event,
              EXTRACT(EPOCH FROM (NOW() - updated_at)) AS age_s
       FROM robot_status ORDER BY updated_at DESC
     `;
@@ -32,7 +33,12 @@ module.exports = async function handler(req, res) {
       ORDER BY id ASC LIMIT 5000
     ` : [];
 
-    return res.status(200).json({ robots, sessions, session, scans });
+    const events = session ? await sql`
+      SELECT id, device_id, event, floor, e, n, heading, created_at
+      FROM robot_events WHERE session_id = ${session} ORDER BY id DESC LIMIT 40
+    ` : [];
+
+    return res.status(200).json({ robots, sessions, session, scans, events });
   } catch (err) {
     console.error('live failed', err);
     return res.status(500).json({ error: 'Database unavailable' });
