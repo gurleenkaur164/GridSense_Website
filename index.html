@@ -49,6 +49,7 @@
     .tb-label{font-size:.7rem;text-transform:uppercase;letter-spacing:.06em;color:var(--text3);font-weight:700;}
 
     .stats{display:grid;grid-template-columns:repeat(6,1fr);gap:1rem;margin-bottom:1.2rem;}
+    #results .stat{text-align:left;} #results .stat-value{font-size:1.25rem;} .stat-head{font-size:.66rem;text-transform:uppercase;letter-spacing:.06em;color:var(--text3);font-weight:700;margin-bottom:4px;}
     .stat{background:var(--card);border:1.5px solid var(--border);border-radius:var(--radius);padding:.9rem 1rem;text-align:center;box-shadow:var(--shadow);}
     .stat-value{font-family:var(--mono);font-size:1.45rem;font-weight:700;color:var(--pink);}
     .stat-label{font-size:.68rem;color:var(--text2);margin-top:2px;font-weight:600;text-transform:uppercase;letter-spacing:.04em;}
@@ -143,14 +144,10 @@
     <div class="seg" id="floorSeg"></div>
   </div>
 
-  <div class="stats">
-    <div class="stat"><div class="stat-value" id="sAvg">–</div><div class="stat-label">Avg best RSSI (dBm)</div><div class="stat-sub" id="sAvgSub"></div></div>
-    <div class="stat"><div class="stat-value" id="sCells">–</div><div class="stat-label">Cells mapped</div><div class="stat-sub" id="sCellsSub"></div></div>
-    <div class="stat"><div class="stat-value" id="sAps">–</div><div class="stat-label">Access points</div><div class="stat-sub" id="sApsSub"></div></div>
-    <div class="stat"><div class="stat-value" id="sCont">–</div><div class="stat-label">Avg contention</div><div class="stat-sub">co-channel APs per cell</div></div>
-    <div class="stat"><div class="stat-value" id="sFlag">–</div><div class="stat-label">Cells needing action</div><div class="stat-sub" id="sFlagSub"></div></div>
-    <div class="stat"><div class="stat-value" id="sRmse">–</div><div class="stat-label">Model RMSE (dB)</div><div class="stat-sub">hybrid, spatial-block CV</div></div>
-  </div>
+  <!-- Headline results (building-wide, from the analysis pipeline) -->
+  <div class="stats" id="results"></div>
+  <!-- Per-floor figures for the selected source -->
+  <div class="stats" id="floorStats"></div>
 
   <div class="grid">
     <!-- FLOOR MAP -->
@@ -163,14 +160,16 @@
         <div style="display:flex;gap:.6rem;flex-wrap:wrap;align-items:center">
           <div class="seg" id="layerSeg">
             <button class="btn active" data-layer="signal">Signal</button>
+            <button class="btn" data-layer="gp">GP surface</button>
+            <button class="btn" data-layer="uncertainty">Uncertainty</button>
             <button class="btn" data-layer="contention">Contention</button>
             <button class="btn" data-layer="variability">Variability</button>
-            <button class="btn" data-layer="action">Action</button>
+            <button class="btn" data-layer="cluster">Cluster / action</button>
           </div>
           <div class="seg">
             <button class="btn active" id="tglAps" onclick="toggleOpt('aps',this)">APs</button>
             <button class="btn" id="tglTrue" onclick="toggleOpt('truth',this)">Ground truth</button>
-            <button class="btn active" id="tglPath" onclick="toggleOpt('path',this)">Path</button>
+            <button class="btn active" id="tglPath" onclick="toggleOpt('path',this)">Scan points</button>
           </div>
         </div>
       </div>
@@ -185,7 +184,7 @@
     <div class="card">
       <div class="card-header">
         <div>
-          <div class="card-title">Signal at robot position</div>
+          <div class="card-title">Signal along the robot path</div>
           <div class="card-sub">Strongest AP per scan point, in arrival order</div>
         </div>
         <span class="badge" id="liveBadge">idle</span>
@@ -199,7 +198,7 @@
       <div class="card-header">
         <div>
           <div class="card-title">Access points (estimated positions)</div>
-          <div class="card-sub">Joint non-linear least-squares fit of the log-distance model</div>
+          <div class="card-sub">RSSI-weighted centroid (pipeline estimator) · NLS error shown for comparison</div>
         </div>
         <span class="badge" id="apBadge">–</span>
       </div>
@@ -211,7 +210,7 @@
       <div class="card-header">
         <div>
           <div class="card-title">RSSI prediction benchmark</div>
-          <div class="card-sub">Mean RMSE over 5 folds — lower is better</div>
+          <div class="card-sub">Mean RMSE ± std over 5 folds, three validation strategies — lower is better</div>
         </div>
         <span class="badge">ML</span>
       </div>
@@ -223,7 +222,7 @@
       <div class="card-header">
         <div>
           <div class="card-title">Coverage vs. number of APs</div>
-          <div class="card-sub">Greedy AP selection — how many APs the building actually needs</div>
+          <div class="card-sub">Greedy AP selection: share of the 955 scan points covered as APs are added</div>
         </div>
         <span class="badge" id="covBadge">–</span>
       </div>
@@ -246,7 +245,7 @@
       <div class="card-header">
         <div>
           <div class="card-title">Physics model residuals</div>
-          <div class="card-sub">Measured − predicted RSSI across all readings</div>
+          <div class="card-sub" id="residSub">Measured − predicted RSSI across all readings</div>
         </div>
       </div>
       <div class="chart-box"><canvas id="residChart"></canvas></div>
@@ -277,628 +276,6 @@
   GridSense — Capstone Project 2026 · WiFi Signal Mapping Robot
 </footer>
 
-<script>
-// ======================================================
-//  STATE
-// ======================================================
-const POLL_MS = 3000;
-const ROBOT_ONLINE_S = 30;
-const CELL_M = 2;               // live scans are binned onto a 2 m grid, like the survey grid
-const WEAK_DBM = -67;           // below this the best AP is too weak for reliable VoIP / video
-const ROUGH_STD_DB = 4;         // spatial std above this marks small-scale fading
-
-const S = {
-  model: null,                  // data/gridsense.json
-  source: 'baseline',
-  floor: 1,
-  layer: 'signal',
-  show: { aps: true, truth: false, path: true },
-  live: { since: 0, session: null, sessions: [], robots: [], samples: [], points: [], apiOk: null },
-  replay: { idx: 0, timer: null, samples: [], points: [] },
-  cells: [],                    // cells currently shown (all floors)
-  robot: null,                  // {floor,e,n,heading}
-};
-
-const $ = (id) => document.getElementById(id);
-const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));
-const css = (v) => getComputedStyle(document.documentElement).getPropertyValue(v).trim();
-const mean = (a) => a.length ? a.reduce((x, y) => x + y, 0) / a.length : NaN;
-const std = (a) => { if (a.length < 2) return NaN; const m = mean(a); return Math.sqrt(a.reduce((s, x) => s + (x - m) ** 2, 0) / (a.length - 1)); };
-
-function toggleTheme() {
-  const next = document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
-  document.documentElement.setAttribute('data-theme', next);
-  localStorage.setItem('signalscope-theme', next);
-  renderAll();
-}
-function logout() {
-  localStorage.removeItem('token'); localStorage.removeItem('userName');
-  window.location.href = '/login.html';
-}
-
-// ======================================================
-//  AGGREGATION — raw readings -> grid cells
-//  Mirrors the survey pipeline: per cell, average each AP's RSSI, then
-//  best AP, number of visible APs, best-second gap, contention and spatial std.
-// ======================================================
-function aggregate(samples, points) {
-  const cells = new Map();
-  for (const s of samples) {
-    const ge = Math.round(s.e / CELL_M) * CELL_M, gn = Math.round(s.n / CELL_M) * CELL_M;
-    const key = `${s.floor}|${ge}|${gn}`;
-    let c = cells.get(key);
-    if (!c) { c = { floor: s.floor, e: ge, n: gn, perAp: new Map(), bestPerPoint: new Map() }; cells.set(key, c); }
-    if (!c.perAp.has(s.mac)) c.perAp.set(s.mac, []);
-    if (s.rssi >= 0) continue;
-    c.perAp.get(s.mac).push(s.rssi);
-    const pk = `${s.e}|${s.n}`;
-    c.bestPerPoint.set(pk, Math.max(c.bestPerPoint.get(pk) ?? -200, s.rssi));
-  }
-  const out = [];
-  for (const c of cells.values()) {
-    const apMeans = [...c.perAp.values()].map(mean).sort((a, b) => b - a);
-    const best = apMeans[0];
-    const pts = [...c.bestPerPoint.values()];
-    const spatialStd = std(pts);
-    // contention: APs whose signal is within 20 dB of the best one (they compete for airtime)
-    const contention = apMeans.filter((v) => v >= best - 20).length - 1;
-    let action = 'no action', cluster_name = 'strong uniform';
-    if (best < WEAK_DBM) { action = 'coverage gap: add or move an AP'; cluster_name = 'weak'; }
-    else if (spatialStd > ROUGH_STD_DB) { action = 'small-scale fading: siting issue, not coverage'; cluster_name = 'strong rough'; }
-    out.push({
-      floor: c.floor, e: c.e, n: c.n,
-      rssi_best_mean: mean(pts),
-      rssi_spatial_std: Number.isFinite(spatialStd) ? spatialStd : null,
-      rssi_all_mean: mean(apMeans),
-      n_aps_visible: apMeans.length,
-      best_second_gap: apMeans.length > 1 ? apMeans[0] - apMeans[1] : null,
-      n_samples: pts.length,
-      contention, cluster_name, action,
-    });
-  }
-  return out;
-}
-
-// ======================================================
-//  SOURCES
-// ======================================================
-function currentCells() {
-  if (S.source === 'baseline') return S.model.cells;
-  if (S.source === 'live') return aggregate(S.live.samples);
-  return aggregate(S.replay.samples);
-}
-function currentPoints() {
-  if (S.source === 'baseline') return S.model.trace;
-  return S.source === 'live' ? S.live.points : S.replay.points;
-}
-
-function setSource(src) {
-  S.source = src;
-  document.querySelectorAll('#sourceSeg .btn').forEach((b) => b.classList.toggle('active', b.dataset.src === src));
-  $('sessionSelect').style.display = src === 'live' && S.live.sessions.length ? '' : 'none';
-  if (src === 'replay') startReplay(); else stopReplay();
-  if (src !== 'live') S.robot = src === 'baseline' ? null : S.robot;
-  if (src === 'live') S.robot = liveRobot();
-  refresh();
-}
-
-// ---------- Live (database) ----------
-function liveRobot() {
-  const r = S.live.robots.find((x) => x.session_id === S.live.session) || S.live.robots[0];
-  return r && r.floor != null ? { floor: r.floor, e: r.e, n: r.n, heading: r.heading } : null;
-}
-
-async function pollLive() {
-  const token = localStorage.getItem('token');
-  try {
-    const q = new URLSearchParams({ since: S.live.since });
-    if (S.live.session) q.set('session', S.live.session);
-    const res = await fetch('/api/live?' + q, { headers: { Authorization: 'Bearer ' + token } });
-    if (res.status === 401) return logout();
-    if (!res.ok) throw new Error(res.status);
-    const d = await res.json();
-    S.live.apiOk = true;
-    S.live.robots = d.robots || [];
-    S.live.sessions = d.sessions || [];
-    if (!S.live.session && d.session) S.live.session = d.session;
-    renderSessionSelect();
-
-    const fresh = d.scans || [];
-    for (const s of fresh) {
-      S.live.samples.push({ floor: +s.floor, e: +s.e, n: +s.n, mac: s.mac, rssi: +s.rssi, band: s.band, ssid: s.ssid, t: s.created_at });
-      S.live.since = Math.max(S.live.since, +s.id);
-    }
-    if (fresh.length) {
-      groupPoints(fresh.map((s) => ({ floor: +s.floor, e: +s.e, n: +s.n, mac: s.mac, rssi: +s.rssi, ssid: s.ssid, t: s.created_at })), S.live.points);
-      if (S.source === 'live') pushFeed(fresh);
-    }
-    const online = S.live.robots.some((r) => r.age_s < ROBOT_ONLINE_S);
-    // Jump to live view automatically the first time a robot comes online
-    if (online && !S.live.autoSwitched && S.source === 'baseline') { S.live.autoSwitched = true; setSource('live'); }
-    if (S.source === 'live') { S.robot = liveRobot(); if (fresh.length || online) refresh(); }
-  } catch (err) {
-    S.live.apiOk = false;
-  }
-  renderStatus();
-}
-
-function renderSessionSelect() {
-  const sel = $('sessionSelect');
-  const html = S.live.sessions.map((s) => `<option value="${esc(s.session_id)}" ${s.session_id === S.live.session ? 'selected' : ''}>${esc(s.session_id)} · ${s.readings} readings</option>`).join('');
-  if (sel.innerHTML !== html) sel.innerHTML = html;
-  sel.style.display = S.source === 'live' && S.live.sessions.length ? '' : 'none';
-}
-$('sessionSelect').addEventListener('change', (e) => {
-  S.live.session = e.target.value; S.live.since = 0; S.live.samples = []; S.live.points = [];
-  $('feed').innerHTML = ''; pollLive();
-});
-
-// Groups readings into scan points (one per robot stop) for the signal-over-time chart & path
-function groupPoints(readings, into) {
-  for (const r of readings) {
-    const last = into[into.length - 1];
-    if (last && last.floor === r.floor && last.e === r.e && last.n === r.n) {
-      last.best = Math.max(last.best, r.rssi); last.count++;
-    } else {
-      into.push({ floor: r.floor, e: r.e, n: r.n, best: r.rssi, count: 1, t: r.t });
-    }
-  }
-}
-
-// ---------- Replay (recorded survey streamed in-browser) ----------
-let replayQueue = null;
-function startReplay() {
-  if (!replayQueue) {
-    const byPoint = new Map();
-    for (const [floor, e, n, mac, rssi, band] of S.model.samples) {
-      const k = `${floor}|${e}|${n}`;
-      if (!byPoint.has(k)) byPoint.set(k, []);
-      if (rssi < 0) byPoint.get(k).push({ floor, e, n, mac, rssi, band });
-    }
-    replayQueue = S.model.trace.map((p) => byPoint.get(`${p.floor}|${p.e}|${p.n}`) || []);
-  }
-  if (S.replay.idx >= replayQueue.length) { S.replay = { idx: 0, timer: null, samples: [], points: [] }; $('feed').innerHTML = ''; }
-  clearInterval(S.replay.timer);
-  S.replay.timer = setInterval(stepReplay, 250);
-}
-function stopReplay() { clearInterval(S.replay.timer); S.replay.timer = null; }
-function stepReplay() {
-  if (S.replay.idx >= replayQueue.length) { stopReplay(); renderStatus(); return; }
-  const batch = replayQueue[S.replay.idx++];
-  if (!batch.length) return;
-  const t = new Date().toISOString();
-  batch.forEach((b) => (b.t = t));
-  S.replay.samples.push(...batch);
-  groupPoints(batch, S.replay.points);
-  const p = S.replay.points[S.replay.points.length - 1], prev = S.replay.points[S.replay.points.length - 2];
-  S.robot = { floor: p.floor, e: p.e, n: p.n, heading: prev ? Math.atan2(p.e - prev.e, p.n - prev.n) * 180 / Math.PI : 0 };
-  if (S.robot.floor !== S.floor) setFloor(S.robot.floor, true);
-  pushFeed(batch.map((b) => ({ ...b, created_at: t })));
-  refresh();
-}
-
-// ======================================================
-//  STATUS PILLS
-// ======================================================
-function renderStatus() {
-  const rp = $('robotPill'), dp = $('dataPill');
-  const r = S.live.robots[0];
-  rp.className = 'pill';
-  if (S.live.apiOk === false) { $('robotPillText').textContent = 'Robot API offline'; rp.classList.add('warn'); }
-  else if (r && r.age_s < ROBOT_ONLINE_S) {
-    rp.classList.add('on');
-    $('robotPillText').textContent = `${r.device_id} online · F${r.floor}` + (r.battery != null ? ` · ${Math.round(r.battery)}%` : '');
-  } else if (r) $('robotPillText').textContent = `${r.device_id} last seen ${ago(r.age_s)}`;
-  else $('robotPillText').textContent = 'No robot connected yet';
-
-  dp.className = 'pill';
-  if (S.source === 'baseline') $('dataPillText').textContent = `Survey · ${S.model.meta.n_samples.toLocaleString()} readings`;
-  else if (S.source === 'live') { dp.classList.add(r && r.age_s < ROBOT_ONLINE_S ? 'on' : 'warn'); $('dataPillText').textContent = `Live · ${S.live.samples.length.toLocaleString()} readings`; }
-  else { dp.classList.add(S.replay.timer ? 'on' : 'warn'); $('dataPillText').textContent = `Replay · ${S.replay.idx}/${replayQueue ? replayQueue.length : 0} points`; }
-
-  const badge = $('liveBadge');
-  badge.textContent = S.source === 'baseline' ? 'idle' : S.source === 'replay' ? (S.replay.timer ? 'replaying' : 'done') : (r && r.age_s < ROBOT_ONLINE_S ? 'live' : 'waiting');
-}
-function ago(s) { s = Math.round(s); return s < 60 ? s + 's ago' : s < 3600 ? Math.round(s / 60) + 'm ago' : Math.round(s / 3600) + 'h ago'; }
-
-// ======================================================
-//  FLOOR MAP
-// ======================================================
-const map = $('mapCanvas'), mctx = map.getContext('2d');
-let view = null; // projection for hit-testing
-
-function signalColor(dbm) {
-  // -75 (red) .. -55 (amber) .. -25 (teal) — tuned to the indoor range we observed
-  const stops = [[-80, [214, 48, 49]], [-67, [225, 112, 85]], [-55, [253, 203, 110]], [-45, [85, 239, 196]], [-30, [0, 184, 148]], [-20, [0, 150, 136]]];
-  if (dbm <= stops[0][0]) return `rgb(${stops[0][1]})`;
-  for (let i = 1; i < stops.length; i++) {
-    if (dbm <= stops[i][0]) {
-      const [a, ca] = stops[i - 1], [b, cb] = stops[i], t = (dbm - a) / (b - a);
-      return `rgb(${ca.map((v, j) => Math.round(v + (cb[j] - v) * t))})`;
-    }
-  }
-  return `rgb(${stops[stops.length - 1][1]})`;
-}
-function seqColor(t) { // 0..1 pale -> pink -> deep purple
-  t = Math.max(0, Math.min(1, t));
-  const a = [255, 224, 236], b = [232, 67, 147], c = [74, 20, 90];
-  const [x, y, u] = t < .5 ? [a, b, t * 2] : [b, c, (t - .5) * 2];
-  return `rgb(${x.map((v, i) => Math.round(v + (y[i] - v) * u))})`;
-}
-const ACTION_COLORS = { 'no action': '#00b894', 'small-scale fading: siting issue, not coverage': '#2e86de', 'coverage gap: add or move an AP': '#e17055' };
-
-function cellColor(c) {
-  switch (S.layer) {
-    case 'contention': return seqColor((c.contention ?? 0) / 18);
-    case 'variability': return c.rssi_spatial_std == null ? css('--text3') : seqColor(c.rssi_spatial_std / 8);
-    case 'action': return ACTION_COLORS[c.action] || css('--text3');
-    default: return signalColor(c.rssi_best_mean);
-  }
-}
-
-function drawMap() {
-  const dpr = window.devicePixelRatio || 1;
-  const W = map.clientWidth, H = Math.max(260, Math.min(420, W * 0.36));
-  map.width = W * dpr; map.height = H * dpr; map.style.height = H + 'px';
-  mctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-
-  // fixed building extent (metres) so floors line up when switching
-  const ext = S.model.extent;
-  const pad = { l: 46, r: 16, t: 14, b: 34 };
-  const sx = (W - pad.l - pad.r) / (ext.n1 - ext.n0), sy = (H - pad.t - pad.b) / (ext.e1 - ext.e0);
-  const s = Math.min(sx, sy);
-  const ox = pad.l + ((W - pad.l - pad.r) - s * (ext.n1 - ext.n0)) / 2;
-  const oy = pad.t + ((H - pad.t - pad.b) - s * (ext.e1 - ext.e0)) / 2;
-  const X = (n) => ox + (n - ext.n0) * s, Y = (e) => oy + (ext.e1 - e) * s;
-  view = { X, Y, s };
-
-  mctx.fillStyle = css('--bg'); mctx.fillRect(0, 0, W, H);
-
-  // grid lines + axes
-  mctx.strokeStyle = css('--border'); mctx.lineWidth = 1; mctx.fillStyle = css('--text3');
-  mctx.font = '10px "DM Sans",system-ui'; mctx.textAlign = 'center';
-  for (let n = Math.ceil(ext.n0 / 10) * 10; n <= ext.n1; n += 10) {
-    mctx.globalAlpha = .5; mctx.beginPath(); mctx.moveTo(X(n), Y(ext.e1)); mctx.lineTo(X(n), Y(ext.e0)); mctx.stroke(); mctx.globalAlpha = 1;
-    mctx.fillText(n + ' m', X(n), Y(ext.e0) + 14);
-  }
-  mctx.textAlign = 'right';
-  for (let e = Math.ceil(ext.e0 / 5) * 5; e <= ext.e1; e += 5) {
-    mctx.globalAlpha = .5; mctx.beginPath(); mctx.moveTo(X(ext.n0), Y(e)); mctx.lineTo(X(ext.n1), Y(e)); mctx.stroke(); mctx.globalAlpha = 1;
-    mctx.fillText(e + ' m', X(ext.n0) - 6, Y(e) + 3);
-  }
-  mctx.textAlign = 'center'; mctx.fillText('North (m) →', X((ext.n0 + ext.n1) / 2), H - 4);
-
-  // cells
-  const cells = S.cells.filter((c) => c.floor === S.floor);
-  const size = Math.max(4, CELL_M * s - 2);
-  for (const c of cells) {
-    mctx.fillStyle = cellColor(c);
-    roundRect(X(c.n) - size / 2, Y(c.e) - size / 2, size, size, 3); mctx.fill();
-  }
-  if (!cells.length) {
-    mctx.fillStyle = css('--text2'); mctx.font = '600 13px "DM Sans"'; mctx.textAlign = 'center';
-    mctx.fillText(S.source === 'live' ? 'Waiting for the robot to scan this floor…' : 'No scan data on this floor yet', W / 2, H / 2);
-  }
-
-  // robot path
-  if (S.show.path) {
-    const pts = currentPoints().filter((p) => p.floor === S.floor);
-    if (pts.length > 1) {
-      mctx.strokeStyle = 'rgba(46,134,222,.45)'; mctx.lineWidth = 1.5; mctx.setLineDash([3, 3]);
-      mctx.beginPath(); pts.forEach((p, i) => i ? mctx.lineTo(X(p.n), Y(p.e)) : mctx.moveTo(X(p.n), Y(p.e))); mctx.stroke();
-      mctx.setLineDash([]);
-    }
-  }
-
-  // access points
-  if (S.show.aps || S.show.truth) {
-    for (const ap of S.model.aps) {
-      if (S.show.truth && ap.true_floor === S.floor) {
-        if (S.show.aps && ap.floor_est === S.floor) {
-          mctx.strokeStyle = css('--text3'); mctx.lineWidth = 1; mctx.beginPath();
-          mctx.moveTo(X(ap.nls_joint_n), Y(ap.nls_joint_e)); mctx.lineTo(X(ap.true_n), Y(ap.true_e)); mctx.stroke();
-        }
-        mctx.strokeStyle = css('--text'); mctx.lineWidth = 2;
-        const x = X(ap.true_n), y = Y(ap.true_e);
-        mctx.beginPath(); mctx.moveTo(x - 4, y - 4); mctx.lineTo(x + 4, y + 4); mctx.moveTo(x + 4, y - 4); mctx.lineTo(x - 4, y + 4); mctx.stroke();
-      }
-      if (S.show.aps && ap.floor_est === S.floor) {
-        const x = X(ap.nls_joint_n), y = Y(ap.nls_joint_e);
-        mctx.beginPath(); mctx.arc(x, y, 6, 0, Math.PI * 2);
-        mctx.fillStyle = '#fff'; mctx.fill(); mctx.strokeStyle = css('--pink'); mctx.lineWidth = 2.5; mctx.stroke();
-        mctx.fillStyle = css('--text'); mctx.font = 'bold 9px "DM Sans"'; mctx.textAlign = 'center';
-        mctx.fillText('AP' + ap.ap_id, x, y - 9);
-      }
-    }
-  }
-
-  // robot
-  if (S.robot && S.robot.floor === S.floor) {
-    const x = X(S.robot.n), y = Y(S.robot.e), a = -((S.robot.heading || 0) * Math.PI / 180);
-    mctx.beginPath(); mctx.arc(x, y, 16 + Math.sin(Date.now() / 300) * 3, 0, Math.PI * 2);
-    mctx.strokeStyle = 'rgba(46,134,222,.35)'; mctx.lineWidth = 2; mctx.stroke();
-    mctx.save(); mctx.translate(x, y); mctx.rotate(a);
-    mctx.beginPath(); mctx.moveTo(11, 0); mctx.lineTo(-7, -7); mctx.lineTo(-7, 7); mctx.closePath();
-    mctx.fillStyle = css('--pink'); mctx.fill(); mctx.strokeStyle = '#fff'; mctx.lineWidth = 1.5; mctx.stroke();
-    mctx.restore();
-  }
-}
-function roundRect(x, y, w, h, r) {
-  mctx.beginPath(); mctx.moveTo(x + r, y); mctx.arcTo(x + w, y, x + w, y + h, r); mctx.arcTo(x + w, y + h, x, y + h, r);
-  mctx.arcTo(x, y + h, x, y, r); mctx.arcTo(x, y, x + w, y, r); mctx.closePath();
-}
-
-function renderLegend() {
-  const L = $('mapLegend');
-  const apL = `<span class="legend-item"><span class="sw" style="border:2.5px solid var(--pink);border-radius:50%;background:#fff"></span>AP (estimated)</span>`
-    + (S.show.truth ? `<span class="legend-item">✕ AP (ground truth)</span>` : '')
-    + `<span class="legend-item"><span class="sw" style="background:var(--pink);clip-path:polygon(0 0,100% 50%,0 100%)"></span>Robot</span>`;
-  let body;
-  if (S.layer === 'signal') body = `<span>-80</span><span class="ramp" style="background:linear-gradient(90deg,${[-80, -67, -55, -45, -30, -20].map(signalColor).join(',')})"></span><span>-20 dBm</span>`;
-  else if (S.layer === 'contention') body = `<span>0</span><span class="ramp" style="background:linear-gradient(90deg,${[0, .5, 1].map(seqColor).join(',')})"></span><span>18+ competing APs</span>`;
-  else if (S.layer === 'variability') body = `<span>0</span><span class="ramp" style="background:linear-gradient(90deg,${[0, .5, 1].map(seqColor).join(',')})"></span><span>8+ dB spatial std</span>`;
-  else body = Object.entries(ACTION_COLORS).map(([k, c]) => `<span class="legend-item"><span class="sw" style="background:${c}"></span>${k}</span>`).join('');
-  L.innerHTML = body + `<span style="margin-left:auto;display:flex;gap:.9rem">${apL}</span>`;
-}
-
-map.addEventListener('mousemove', (e) => {
-  if (!view) return;
-  const r = map.getBoundingClientRect(), mx = e.clientX - r.left, my = e.clientY - r.top;
-  const tip = $('mapTip');
-  // AP hit test first
-  const ap = S.show.aps && S.model.aps.find((a) => a.floor_est === S.floor && Math.hypot(view.X(a.nls_joint_n) - mx, view.Y(a.nls_joint_e) - my) < 9);
-  let html = '';
-  if (ap) {
-    html = `<b>AP ${ap.ap_id}</b> · ${esc(ap.mac)} · ${esc(ap.band)}<br>Est. position: (${ap.nls_joint_e.toFixed(1)} E, ${ap.nls_joint_n.toFixed(1)} N), floor ${ap.floor_est}<br>
-      Tx ref A: ${ap.nls_joint_A.toFixed(1)} dBm · path-loss exp: ${ap.nls_joint_exponent.toFixed(2)}<br>Localisation error: ${ap.nls_joint_err_2d_m.toFixed(1)} m · ${ap.n_detections} detections`;
-  } else {
-    const half = CELL_M * view.s / 2;
-    const c = S.cells.find((c) => c.floor === S.floor && Math.abs(view.X(c.n) - mx) <= half && Math.abs(view.Y(c.e) - my) <= half);
-    if (c) {
-      html = `<b>Cell (${(+c.e).toFixed(1)} E, ${(+c.n).toFixed(1)} N)</b> · floor ${c.floor}<br>
-        Best AP: ${c.rssi_best_mean.toFixed(1)} dBm · all APs avg ${c.rssi_all_mean.toFixed(1)} dBm<br>
-        Visible APs: ${(+c.n_aps_visible).toFixed(1)} · best–2nd gap: ${c.best_second_gap != null ? c.best_second_gap.toFixed(1) + ' dB' : '–'}<br>
-        Contention: ${(+c.contention).toFixed(1)}${c.contention_projected_1_6_11 != null ? ` (→ ${c.contention_projected_1_6_11.toFixed(1)} on ch 1/6/11)` : ''}<br>
-        Spatial std: ${c.rssi_spatial_std != null ? c.rssi_spatial_std.toFixed(1) + ' dB' : '–'} · ${c.n_samples} scan point${c.n_samples === 1 ? '' : 's'}<br>
-        Cluster: ${esc(c.cluster_name || '–')}<br>Action: <b>${esc(c.action || '–')}</b>`;
-    }
-  }
-  if (!html) { tip.classList.remove('visible'); return; }
-  tip.innerHTML = html;
-  const left = mx + 16 + 280 > r.width ? mx - 290 : mx + 16;
-  tip.style.left = Math.max(0, left) + 'px'; tip.style.top = Math.max(0, my - 10) + 'px';
-  tip.classList.add('visible');
-});
-map.addEventListener('mouseleave', () => $('mapTip').classList.remove('visible'));
-
-// ======================================================
-//  STATS / AP TABLE / SUMMARY
-// ======================================================
-function renderStats() {
-  const cells = S.cells.filter((c) => c.floor === S.floor);
-  const all = S.cells;
-  const avg = mean(cells.map((c) => c.rssi_best_mean));
-  $('sAvg').textContent = Number.isFinite(avg) ? avg.toFixed(1) : '–';
-  $('sAvgSub').textContent = `floor ${S.floor}` + (Number.isFinite(avg) ? ` · ${avg >= -50 ? 'excellent' : avg >= -60 ? 'good' : avg >= WEAK_DBM ? 'fair' : 'weak'}` : '');
-  $('sCells').textContent = cells.length;
-  $('sCellsSub').textContent = `${all.length} across all floors`;
-  const apsHere = S.model.aps.filter((a) => a.floor_est === S.floor).length;
-  $('sAps').textContent = apsHere;
-  $('sApsSub').textContent = `${S.model.aps.length} localised in building`;
-  const cont = mean(cells.map((c) => +c.contention));
-  $('sCont').textContent = Number.isFinite(cont) ? cont.toFixed(1) : '–';
-  const flagged = cells.filter((c) => c.action && c.action !== 'no action').length;
-  $('sFlag').textContent = flagged;
-  $('sFlagSub').textContent = cells.length ? `${Math.round(flagged / cells.length * 100)}% of floor ${S.floor}` : '';
-  const hy = S.model.benchmark.find((b) => b.strategy === 'c_spatial_block' && b.model.includes('hybrid'));
-  $('sRmse').textContent = hy ? hy.mean.toFixed(2) : '–';
-}
-
-function renderApTable() {
-  const aps = [...S.model.aps].sort((a, b) => a.floor_est - b.floor_est || a.ap_id - b.ap_id);
-  $('apBadge').textContent = `${aps.length} APs · ${Math.round(aps.filter((a) => a.floor_correct).length / aps.length * 100)}% floor correct`;
-  $('apTable').innerHTML = `<table><thead><tr><th>AP</th><th>MAC</th><th class="num">Floor</th><th class="num">E, N (m)</th><th class="num">Exp.</th><th class="num">Error</th><th class="num">Hits</th></tr></thead><tbody>` +
-    aps.map((a) => {
-      const err = a.nls_joint_err_2d_m, cls = err < 3 ? 'good' : err < 8 ? 'warn' : 'bad';
-      return `<tr style="${a.floor_est === S.floor ? '' : 'opacity:.55'}"><td><b>AP${a.ap_id}</b></td><td style="font-family:var(--mono);font-size:.72rem">${esc(a.mac)}</td>
-        <td class="num">${a.floor_est}${a.floor_correct ? '' : ' ⚠'}</td><td class="num">${a.nls_joint_e.toFixed(1)}, ${a.nls_joint_n.toFixed(1)}</td>
-        <td class="num">${a.nls_joint_exponent.toFixed(2)}</td><td class="num"><span class="tag ${cls}">${err.toFixed(1)} m</span></td><td class="num">${a.n_detections}</td></tr>`;
-    }).join('') + '</tbody></table>';
-}
-
-function renderSummary() {
-  const cells = S.cells.filter((c) => c.floor === S.floor);
-  const srcName = { baseline: 'recorded survey', live: 'live robot session', replay: 'survey replay' }[S.source];
-  if (!cells.length) {
-    $('summary').innerHTML = `<div class="sblock"><h4>Floor ${S.floor}</h4><p>No ${srcName} data on this floor yet.</p></div>`;
-    return;
-  }
-  const best = cells.map((c) => c.rssi_best_mean);
-  const avg = mean(best), mn = Math.min(...best), mx = Math.max(...best);
-  const weak = cells.filter((c) => c.rssi_best_mean < WEAK_DBM);
-  const rough = cells.filter((c) => (c.action || '').startsWith('small-scale'));
-  const cont = cells.map((c) => +c.contention);
-  const hiCont = cells.filter((c) => c.contention >= 10);
-  const proj = cells.filter((c) => c.contention_projected_1_6_11 != null);
-  const apsHere = S.model.aps.filter((a) => a.floor_est === S.floor);
-  const cov = S.model.coverage_vs_ap, full = cov.find((r) => r.coverage_pct >= 99.9), k90 = cov.find((r) => r.coverage_pct >= 90);
-  const bench = S.model.benchmark.filter((b) => b.strategy === 'c_spatial_block').sort((a, b) => a.mean - b.mean);
-  const naive = bench.find((b) => b.model.includes('naive'));
-
-  const recs = [];
-  if (weak.length) recs.push(`<span class="bad">${weak.length}</span> cell(s) below ${WEAK_DBM} dBm — add or relocate an AP near (${weak.map((c) => `${(+c.e).toFixed(0)} E, ${(+c.n).toFixed(0)} N`).slice(0, 3).join('; ')}).`);
-  else recs.push(`<span class="good">No coverage gaps</span>: every mapped cell has a best AP stronger than ${WEAK_DBM} dBm.`);
-  if (rough.length) recs.push(`<span class="hl">${rough.length}</span> cell(s) show small-scale fading (high spatial std). This is a siting / multipath issue — reorient or lift the nearest AP rather than adding new ones.`);
-  if (hiCont.length) recs.push(`<span class="warn">${hiCont.length}</span> cell(s) hear 10+ competing APs. ${proj.length ? `Moving 2.4 GHz APs to channels 1/6/11 would cut contention from ${mean(cont).toFixed(1)} to ${mean(proj.map((c) => c.contention_projected_1_6_11)).toFixed(1)} on average.` : 'Plan non-overlapping channels (1/6/11) to reduce airtime contention.'}`);
-  if (full) recs.push(`Greedy selection shows <span class="hl">${full.k}</span> APs already give 100% coverage (${k90.k} for 90%) — the building has <span class="warn">${S.model.aps.length - full.k}</span> redundant APs that could be disabled or re-channelled.`);
-
-  $('summary').innerHTML = `
-    <div class="sblock"><h4>Signal quality · floor ${S.floor}</h4>
-      <p>From the ${srcName}: average best-AP signal is <span class="${avg >= -60 ? 'good' : avg >= WEAK_DBM ? 'warn' : 'bad'}">${avg.toFixed(1)} dBm</span>, ranging
-      <span class="hl">${mx.toFixed(0)}</span> to <span class="hl">${mn.toFixed(0)} dBm</span> over ${cells.length} cells.</p>
-      <ul><li>${cells.filter((c) => c.rssi_best_mean >= -50).length} excellent (≥ −50 dBm)</li>
-      <li>${cells.filter((c) => c.rssi_best_mean < -50 && c.rssi_best_mean >= -60).length} good (−50 to −60)</li>
-      <li>${cells.filter((c) => c.rssi_best_mean < -60 && c.rssi_best_mean >= WEAK_DBM).length} fair (−60 to ${WEAK_DBM})</li>
-      <li>${weak.length} weak (&lt; ${WEAK_DBM})</li></ul></div>
-    <div class="sblock"><h4>Interference &amp; access points</h4>
-      <p><span class="hl">${apsHere.length}</span> APs localised on this floor. Each cell hears on average <span class="hl">${mean(cells.map((c) => +c.n_aps_visible)).toFixed(1)}</span> APs, with
-      a contention of <span class="${mean(cont) > 8 ? 'warn' : 'good'}">${mean(cont).toFixed(1)}</span>.
-      Median AP localisation error is <span class="hl">${median(S.model.aps.map((a) => a.nls_joint_err_2d_m)).toFixed(1)} m</span>
-      (vs ${median(S.model.aps.map((a) => a.centre_err_2d_m)).toFixed(1)} m for a naive centre guess).</p></div>
-    <div class="sblock"><h4>Prediction model</h4>
-      <p>Best model under spatial-block cross-validation is <span class="good">${esc(bench[0].model.replace(/^\d\.\s*/, ''))}</span> at
-      <span class="hl">${bench[0].mean.toFixed(2)} dB</span> RMSE — ${naive ? `${(100 - bench[0].mean / naive.mean * 100).toFixed(0)}% better than predicting the mean (${naive.mean.toFixed(1)} dB)` : ''}.
-      Distance and AP location dominate the residual correction.</p></div>
-    <div class="sblock"><h4>Recommendations</h4><ul>${recs.map((r) => `<li>${r}</li>`).join('')}</ul></div>`;
-  $('summaryTime').textContent = 'Updated ' + new Date().toLocaleTimeString();
-}
-function median(a) { const s = [...a].sort((x, y) => x - y); return s.length ? s[Math.floor(s.length / 2)] : NaN; }
-
-// ======================================================
-//  CHARTS
-// ======================================================
-const charts = {};
-function chartDefaults() {
-  Chart.defaults.font.family = '"DM Sans",system-ui'; Chart.defaults.font.size = 11;
-  Chart.defaults.color = css('--text2'); Chart.defaults.borderColor = css('--border');
-}
-function makeChart(id, cfg) {
-  if (charts[id]) charts[id].destroy();
-  const o = cfg.options || {};
-  cfg.options = { responsive: true, maintainAspectRatio: false, animation: false, ...o, plugins: { legend: { display: false }, ...o.plugins } };
-  charts[id] = new Chart($(id), cfg);
-}
-
-function renderStaticCharts() {
-  chartDefaults();
-  const B = S.model.benchmark;
-  const models = [...new Set(B.map((b) => b.model))];
-  const strategies = [['a_random_point', 'Random points'], ['b_groupkfold_by_ap', 'Unseen APs'], ['c_spatial_block', 'Unseen areas']];
-  const palette = ['#8e9bac', '#2e86de', '#54a0ff', '#e09100', '#00b894'];
-  makeChart('benchChart', {
-    type: 'bar',
-    data: { labels: strategies.map((s) => s[1]), datasets: models.map((m, i) => ({
-      label: m.replace(/^\d\.\s*/, ''), backgroundColor: palette[i], borderRadius: 4,
-      data: strategies.map(([s]) => B.find((b) => b.strategy === s && b.model === m)?.mean),
-    })) },
-    options: { plugins: { legend: { display: true, position: 'bottom', labels: { boxWidth: 10 } } }, scales: { y: { title: { display: true, text: 'RMSE (dB)' }, beginAtZero: true } } },
-  });
-
-  const cov = S.model.coverage_vs_ap;
-  const k100 = cov.find((r) => r.coverage_pct >= 99.9);
-  $('covBadge').textContent = k100 ? `${k100.k} APs → 100%` : '';
-  makeChart('covChart', {
-    type: 'line',
-    data: { labels: cov.map((r) => r.k), datasets: [{ data: cov.map((r) => r.coverage_pct), borderColor: css('--pink'), backgroundColor: 'rgba(46,134,222,.12)', fill: true, tension: .25, pointRadius: 3 }] },
-    options: { plugins: { tooltip: { callbacks: { label: (c) => `${c.parsed.y.toFixed(1)}% covered (adds AP${cov[c.dataIndex].ap_added})` } } },
-      scales: { x: { title: { display: true, text: 'APs kept' } }, y: { min: 0, max: 100, title: { display: true, text: 'Scan points covered (%)' } } } },
-  });
-
-  const fi = [...S.model.feature_importance].sort((a, b) => b.importance - a.importance);
-  makeChart('featChart', {
-    type: 'bar',
-    data: { labels: fi.map((f) => f.feature), datasets: [{ data: fi.map((f) => f.importance * 100), backgroundColor: css('--pink'), borderRadius: 4 }] },
-    options: { indexAxis: 'y', scales: { x: { title: { display: true, text: 'Importance (%)' } } } },
-  });
-
-  const rh = S.model.residual_hist;
-  makeChart('residChart', {
-    type: 'bar',
-    data: { labels: rh.map((r) => r.bin), datasets: [{ data: rh.map((r) => r.count), backgroundColor: rh.map((r) => Math.abs(r.bin + 2) <= 8 ? '#00b894' : '#a0c4f1'), borderRadius: 3, barPercentage: 1, categoryPercentage: .95 }] },
-    options: { scales: { x: { title: { display: true, text: 'Residual (dB)' } }, y: { title: { display: true, text: 'Readings' } } } },
-  });
-}
-
-function renderSignalChart() {
-  const pts = currentPoints();
-  const recent = S.source === 'baseline' ? [] : pts.slice(-150);
-  if (!charts.signalChart) {
-    makeChart('signalChart', {
-      type: 'line',
-      data: { labels: [], datasets: [{ data: [], borderColor: css('--pink'), backgroundColor: 'rgba(46,134,222,.12)', fill: true, tension: .3, pointRadius: 0, borderWidth: 2 }] },
-      options: { scales: { y: { suggestedMin: -80, suggestedMax: -20, title: { display: true, text: 'Best RSSI (dBm)' } }, x: { ticks: { maxTicksLimit: 8 } } },
-        plugins: { tooltip: { callbacks: { title: (c) => { const p = recent[c[0].dataIndex]; return p ? `Floor ${p.floor} · (${p.e} E, ${p.n} N)` : ''; } } } } },
-    });
-  }
-  const ch = charts.signalChart;
-  ch.data.labels = recent.map((p, i) => (S.source === 'live' && p.t) ? new Date(p.t).toLocaleTimeString() : '#' + (pts.length - recent.length + i + 1));
-  ch.data.datasets[0].data = recent.map((p) => p.best);
-  ch.options.plugins.tooltip.callbacks.title = (c) => { const p = recent[c[0].dataIndex]; return p ? `Floor ${p.floor} · (${p.e} E, ${p.n} N)` : ''; };
-  ch.update('none');
-}
-
-function pushFeed(rows) {
-  const feed = $('feed');
-  if (feed.firstElementChild && feed.firstElementChild.classList.contains('t') && feed.children.length === 1) feed.innerHTML = '';
-  const byPoint = new Map();
-  for (const r of rows) {
-    const k = `${r.floor}|${r.e}|${r.n}`;
-    const p = byPoint.get(k) || { ...r, count: 0, best: -200, bestMac: '' };
-    p.count++; if (r.rssi > p.best) { p.best = r.rssi; p.bestMac = r.ssid || r.mac; }
-    byPoint.set(k, p);
-  }
-  for (const p of byPoint.values()) {
-    const div = document.createElement('div');
-    const t = p.created_at || p.t ? new Date(p.created_at || p.t).toLocaleTimeString() : '';
-    div.innerHTML = `<span class="t">${t}</span> F${p.floor} (${(+p.e).toFixed(1)}, ${(+p.n).toFixed(1)}) · ${p.count} APs · best <b style="color:${signalColor(p.best)}">${p.best.toFixed(0)} dBm</b> ${esc(p.bestMac)}`;
-    feed.prepend(div);
-  }
-  while (feed.children.length > 60) feed.lastChild.remove();
-}
-
-// ======================================================
-//  CONTROLS & MAIN LOOP
-// ======================================================
-function setFloor(f, keepRobot) {
-  S.floor = f;
-  document.querySelectorAll('#floorSeg .btn').forEach((b) => b.classList.toggle('active', +b.dataset.floor === f));
-  $('mapTitle').textContent = `Floor ${f} — ${({ signal: 'signal strength', contention: 'channel contention', variability: 'signal variability', action: 'recommended action' })[S.layer]}`;
-  if (!keepRobot) refresh();
-}
-function toggleOpt(k, btn) { S.show[k] = !S.show[k]; btn.classList.toggle('active', S.show[k]); renderLegend(); drawMap(); }
-
-document.querySelectorAll('#sourceSeg .btn').forEach((b) => b.addEventListener('click', () => setSource(b.dataset.src)));
-document.querySelectorAll('#layerSeg .btn').forEach((b) => b.addEventListener('click', () => {
-  S.layer = b.dataset.layer;
-  document.querySelectorAll('#layerSeg .btn').forEach((x) => x.classList.toggle('active', x === b));
-  setFloor(S.floor, true); renderLegend(); drawMap();
-}));
-
-let summaryTimer = 0;
-function refresh() {
-  S.cells = currentCells();
-  setFloor(S.floor, true);
-  renderStats(); renderApTable(); renderLegend(); drawMap(); renderSignalChart(); renderStatus();
-  // summary text is heavier to read; throttle it during streaming
-  if (Date.now() - summaryTimer > 2000 || S.source === 'baseline') { summaryTimer = Date.now(); renderSummary(); }
-}
-function renderAll() { renderStaticCharts(); charts.signalChart && (charts.signalChart.destroy(), delete charts.signalChart); refresh(); }
-
-(function animateRobot() { if (S.robot) drawMap(); setTimeout(() => requestAnimationFrame(animateRobot), 60); })();
-window.addEventListener('resize', () => drawMap());
-
-async function init() {
-  const name = localStorage.getItem('userName');
-  if (name) $('userGreeting').textContent = 'Hi, ' + name;
-  try {
-    const res = await fetch('data/gridsense.json');
-    S.model = await res.json();
-  } catch (err) {
-    $('dataPillText').textContent = 'Failed to load model data';
-    return;
-  }
-  // building extent across all floors and AP estimates, with a small margin
-  const es = S.model.cells.map((c) => c.e).concat(S.model.aps.map((a) => a.nls_joint_e));
-  const ns = S.model.cells.map((c) => c.n).concat(S.model.aps.map((a) => a.nls_joint_n));
-  S.model.extent = { e0: Math.floor(Math.min(...es)) - 2, e1: Math.ceil(Math.max(...es)) + 2, n0: Math.floor(Math.min(...ns)) - 2, n1: Math.ceil(Math.max(...ns)) + 2 };
-  $('floorSeg').innerHTML = S.model.meta.floors.map((f) => `<button class="btn" data-floor="${f}">F${f}</button>`).join('');
-  document.querySelectorAll('#floorSeg .btn').forEach((b) => b.addEventListener('click', () => setFloor(+b.dataset.floor)));
-  renderStaticCharts();
-  setFloor(S.meta?.floors?.[0] || 1);
-  pollLive();
-  setInterval(pollLive, POLL_MS);
-}
-init();
-</script>
+<script src="assets/app.js"></script>
 </body>
 </html>
